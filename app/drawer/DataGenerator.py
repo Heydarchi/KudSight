@@ -54,7 +54,9 @@ class DataGenerator:
         ]
 
         classData.attributes = [
-            f"{var.accessLevel.name.lower()} {'static ' if var.isStatic else ''}{var.dataType} {var.name}".replace(";", "").strip()
+            f"{var.accessLevel.name.lower()} {'static ' if var.isStatic else ''}{var.dataType} {var.name}".replace(
+                ";", ""
+            ).strip()
             for var in classInfo.variables
             if var.name not in ["return"]  # Avoid junk extracted from method bodies
         ]

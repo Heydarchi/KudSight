@@ -20,7 +20,6 @@ class CppClassAnalyzer(AbstractAnalyzer):
 
     def initPatterns(self):
 
-
         self.pattern = [
             r"(template\s*<[^>]+>\s*)?"
             r"(?:\s*(public|private|protected|static|final)\s+)*"
@@ -35,10 +34,11 @@ class CppClassAnalyzer(AbstractAnalyzer):
 
         self.classImplementPattern = "(class)\\s+([a-zA-Z0-9_])*\\s+"
 
-        self.classExtendPattern = r"class\s+[a-zA-Z_][a-zA-Z0-9_]*\s*(?:final)?\s*:\s*(.*?)[{;]"
+        self.classExtendPattern = (
+            r"class\s+[a-zA-Z_][a-zA-Z0-9_]*\s*(?:final)?\s*:\s*(.*?)[{;]"
+        )
 
         self.patternPackageName = r"^\s*namespace\s+([a-zA-Z_][a-zA-Z0-9_:]*)\s*{"
-
 
     def analyze(self, filePath, lang=None, inputStr=None):
         if inputStr == None:
@@ -47,7 +47,6 @@ class CppClassAnalyzer(AbstractAnalyzer):
             fileContent = commentAnalyzer.analyze(filePath, FileTypeEnum.CPP)
         else:
             fileContent = inputStr
-
 
         package_name = self.extract_package_name(fileContent)
         # print("\n********************\n", str(fileContent).rstrip())
@@ -92,15 +91,18 @@ class CppClassAnalyzer(AbstractAnalyzer):
                 )
                 classInfo.methods.extend(methods)
 
-
                 # Remove lines containing 'return' before passing to VariableAnalyzer
-                raw_class_body = tempContent[match.start() : (match.end() + classBoundary)]
+                raw_class_body = tempContent[
+                    match.start() : (match.end() + classBoundary)
+                ]
                 cleaned_class_body = "\n".join(
-                    line for line in raw_class_body.splitlines()
+                    line
+                    for line in raw_class_body.splitlines()
                     if "return" not in line.strip()
                 )
-                variables = CppVariableAnalyzer().analyze(None, lang, cleaned_class_body)
-
+                variables = CppVariableAnalyzer().analyze(
+                    None, lang, cleaned_class_body
+                )
 
                 classInfo.variables.extend(variables)
 
@@ -115,7 +117,7 @@ class CppClassAnalyzer(AbstractAnalyzer):
 
                 tempContent = tempContent[match.end() + classBoundary :]
                 match = re.search(pattern, tempContent)
-        print (listOfClasses)
+        print(listOfClasses)
         return listOfClasses
 
     def find_class_pattern(self, pattern, inputStr):
@@ -132,22 +134,21 @@ class CppClassAnalyzer(AbstractAnalyzer):
             return className
         return None
 
-
     def extract_class_inheritances(self, inputStr):
         inheritance = []
 
-        match = re.search(r"class\s+[a-zA-Z_][a-zA-Z0-9_]*\s*(?:final)?\s*:\s*([^;{]+)", inputStr)
+        match = re.search(
+            r"class\s+[a-zA-Z_][a-zA-Z0-9_]*\s*(?:final)?\s*:\s*([^;{]+)", inputStr
+        )
         if match:
             inherited_part = match.group(1)  # e.g., "public Base, private Utils"
             for item in inherited_part.split(","):
                 name = item.strip().split(" ")[-1]  # get last word (Base, Utils, etc.)
-                inheritance.append(Inheritance(
-                    name=name,
-                    relationship=InheritanceEnum.EXTENDED
-                ))
+                inheritance.append(
+                    Inheritance(name=name, relationship=InheritanceEnum.EXTENDED)
+                )
 
         return inheritance
-
 
     def extract_class_spec(self, inputStr: str, classInfo: ClassNode):
         splittedStr = inputStr.split()

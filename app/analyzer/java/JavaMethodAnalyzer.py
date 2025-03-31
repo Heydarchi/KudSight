@@ -23,10 +23,12 @@ class JavaMethodAnalyzer(AbstractAnalyzer):
         match = re.search(self.pattern, content)
         while match:
             methodInfo = self.extractMethodInfo(match.group(0))
-            boundary = AnalyzerHelper().findMethodBoundary(content[match.start():])
-            methodInfo.variables = JavaVariableAnalyzer().analyze(None, None, content[match.start():match.end() + boundary])
+            boundary = AnalyzerHelper().findMethodBoundary(content[match.start() :])
+            methodInfo.variables = JavaVariableAnalyzer().analyze(
+                None, None, content[match.start() : match.end() + boundary]
+            )
             methods.append(methodInfo)
-            content = content[match.end() + boundary:]
+            content = content[match.end() + boundary :]
             match = re.search(self.pattern, content)
         return methods
 
@@ -51,7 +53,6 @@ class JavaMethodAnalyzer(AbstractAnalyzer):
             methodInfo.name = "unknown"
             methodInfo.dataType = None
         return methodInfo
-
 
 
 if __name__ == "__main__":

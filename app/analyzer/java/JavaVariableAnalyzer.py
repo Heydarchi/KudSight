@@ -6,6 +6,7 @@ from analyzer.AbstractAnalyzer import *
 from model.AnalyzerEntities import *
 from PythonUtilityClasses import FileReader as FR
 
+
 class JavaVariableAnalyzer(AbstractAnalyzer):
     def __init__(self) -> None:
         self.pattern = (
@@ -21,7 +22,7 @@ class JavaVariableAnalyzer(AbstractAnalyzer):
         match = re.search(self.pattern, content, flags=re.MULTILINE | re.DOTALL)
         while match:
             listOfVariables.append(self.extractVariableInfo(match.group(0)))
-            content = content[match.end():]
+            content = content[match.end() :]
             match = re.search(self.pattern, content, flags=re.MULTILINE | re.DOTALL)
 
         return listOfVariables

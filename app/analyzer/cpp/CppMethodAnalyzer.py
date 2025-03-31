@@ -13,8 +13,8 @@ class CppMethodAnalyzer(AbstractAnalyzer):
         self.pattern = (
             r"(?:template\s*<[^>]+>\s*)?"  # optional template
             r"\s*([a-zA-Z_][a-zA-Z0-9_:<>*&\s~]*)\s+"  # return type or destructor
-            r"([a-zA-Z_][a-zA-Z0-9_]*)\s*"             # method name
-            r"\([^)]*\)\s*(const)?\s*[;{]"             # parameters + optional const
+            r"([a-zA-Z_][a-zA-Z0-9_]*)\s*"  # method name
+            r"\([^)]*\)\s*(const)?\s*[;{]"  # parameters + optional const
         )
 
     def analyze(self, filePath, lang=None, classStr=None):
@@ -23,17 +23,19 @@ class CppMethodAnalyzer(AbstractAnalyzer):
         match = re.search(self.pattern, content)
         while match:
             methodInfo = self.extractMethodInfo(match.group(0))
-            boundary = AnalyzerHelper().findMethodBoundary(content[match.start():])
-            methodInfo.variables = CppVariableAnalyzer().analyze(None, None, content[match.start():match.end() + boundary])
+            boundary = AnalyzerHelper().findMethodBoundary(content[match.start() :])
+            methodInfo.variables = CppVariableAnalyzer().analyze(
+                None, None, content[match.start() : match.end() + boundary]
+            )
             methods.append(methodInfo)
-            content = content[match.end() + boundary:]
+            content = content[match.end() + boundary :]
             match = re.search(self.pattern, content)
         return methods
 
     def extractMethodInfo(self, inputString):
         methodInfo = MethodNode()
         cleaned = inputString.strip()
-        cleaned = re.sub(r'\b(public|private|protected):\s*', '', cleaned)
+        cleaned = re.sub(r"\b(public|private|protected):\s*", "", cleaned)
 
         if "public" in inputString:
             methodInfo.accessLevel = AccessEnum.PUBLIC

@@ -23,19 +23,10 @@ class JavaClassAnalyzer(AbstractAnalyzer):
         self.pattern = [
             "(\\;|\\{|\\})*(\\r|\\n)*\\s*(\\r|\\n)*(\\/\\/\\s?[a-zA-Z0-9_].*(\\r|\\n)?)?(\\r|\\n)?\\s?[(public|private)\\s+|(static)\\s+|(final)\\s+].*((class|interface|implements|extends)\\s+[a-zA-Z0-9_\\s]*)+[:{;]"
         ]
-        self.classNamePattern = (
-            "(class|interface)\\s+([a-zA-Z0-9_])+\\s+"
-        )
-        self.classImplementPattern = (
-            "(implements)\\s+([a-zA-Z0-9_])+[:{;\\r\\n\\s]"
-        )
-        self.classExtendPattern = (
-            "(extends)\\s+([a-zA-Z0-9_])+[:{;\\r\\n\\s]"
-        )
-        self.patternPackageName = (
-            r"^\s*package\s+([a-zA-Z0-9_.]+)\s*;"
-        )
-
+        self.classNamePattern = "(class|interface)\\s+([a-zA-Z0-9_])+\\s+"
+        self.classImplementPattern = "(implements)\\s+([a-zA-Z0-9_])+[:{;\\r\\n\\s]"
+        self.classExtendPattern = "(extends)\\s+([a-zA-Z0-9_])+[:{;\\r\\n\\s]"
+        self.patternPackageName = r"^\s*package\s+([a-zA-Z0-9_.]+)\s*;"
 
     def analyze(self, filePath, lang=None, inputStr=None):
         if inputStr == None:
@@ -44,7 +35,6 @@ class JavaClassAnalyzer(AbstractAnalyzer):
             fileContent = commentAnalyzer.analyze(filePath, FileTypeEnum.JAVA)
         else:
             fileContent = inputStr
-
 
         package_name = self.extract_package_name(fileContent)
 
@@ -55,7 +45,6 @@ class JavaClassAnalyzer(AbstractAnalyzer):
             match = self.find_class_pattern(pattern, tempContent)
             while match != None:
                 classInfo = ClassNode()
-
 
                 classInfo.package = package_name
 
@@ -75,7 +64,6 @@ class JavaClassAnalyzer(AbstractAnalyzer):
                     tempContent[match.start() :]
                 )
 
-
                 ### Find the variables & methods within the class's boundary
                 methods = JavaMethodAnalyzer().analyze(
                     None,
@@ -84,15 +72,18 @@ class JavaClassAnalyzer(AbstractAnalyzer):
                 )
                 classInfo.methods.extend(methods)
 
-
                 # Remove lines containing 'return' before passing to VariableAnalyzer
-                raw_class_body = tempContent[match.start() : (match.end() + classBoundary)]
+                raw_class_body = tempContent[
+                    match.start() : (match.end() + classBoundary)
+                ]
                 cleaned_class_body = "\n".join(
-                    line for line in raw_class_body.splitlines()
+                    line
+                    for line in raw_class_body.splitlines()
                     if "return" not in line.strip()
                 )
-                variables = JavaVariableAnalyzer().analyze(None, lang, cleaned_class_body)
-
+                variables = JavaVariableAnalyzer().analyze(
+                    None, lang, cleaned_class_body
+                )
 
                 classInfo.variables.extend(variables)
 
@@ -107,7 +98,7 @@ class JavaClassAnalyzer(AbstractAnalyzer):
 
                 tempContent = tempContent[match.end() + classBoundary :]
                 match = re.search(pattern, tempContent)
-        print (listOfClasses)
+        print(listOfClasses)
         return listOfClasses
 
     def find_class_pattern(self, pattern, inputStr):
@@ -124,7 +115,6 @@ class JavaClassAnalyzer(AbstractAnalyzer):
             return className
         return None
 
-
     def extract_class_inheritances(self, inputStr):
         inheritance = []
 
@@ -132,7 +122,11 @@ class JavaClassAnalyzer(AbstractAnalyzer):
         match = re.search(self.classExtendPattern, inputStr)
         if match:
             inherit = Inheritance(
-                name=" ".join(inputStr[match.start():match.end()].replace("\n", " ").split()).strip().split(" ")[1],
+                name=" ".join(
+                    inputStr[match.start() : match.end()].replace("\n", " ").split()
+                )
+                .strip()
+                .split(" ")[1],
                 relationship=InheritanceEnum.EXTENDED,
             )
             inheritance.append(inherit)
@@ -140,13 +134,16 @@ class JavaClassAnalyzer(AbstractAnalyzer):
         match = re.search(self.classImplementPattern, inputStr)
         if match:
             inherit = Inheritance(
-                name=" ".join(inputStr[match.start():match.end()].replace("\n", " ").split()).strip().split(" ")[1],
+                name=" ".join(
+                    inputStr[match.start() : match.end()].replace("\n", " ").split()
+                )
+                .strip()
+                .split(" ")[1],
                 relationship=InheritanceEnum.IMPLEMENTED,
             )
             inheritance.append(inherit)
 
         return inheritance
-
 
     def extract_class_spec(self, inputStr: str, classInfo: ClassNode):
         splittedStr = inputStr.split()

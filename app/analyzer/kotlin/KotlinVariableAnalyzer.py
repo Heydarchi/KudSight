@@ -12,6 +12,7 @@ from analyzer.AbstractAnalyzer import *
 from model.AnalyzerEntities import *
 from PythonUtilityClasses import FileReader as FR
 
+
 class KotlinVariableAnalyzer(AbstractAnalyzer):
     def __init__(self) -> None:
         self.pattern = (
@@ -26,16 +27,20 @@ class KotlinVariableAnalyzer(AbstractAnalyzer):
         match = re.search(self.pattern, content, flags=re.MULTILINE | re.DOTALL)
         while match:
             listOfVariables.append(self.extractVariableInfo(match.groups()))
-            content = content[match.end():]
+            content = content[match.end() :]
             match = re.search(self.pattern, content, flags=re.MULTILINE | re.DOTALL)
 
         return listOfVariables
 
     def extractVariableInfo(self, matchGroups):
         variableInfo = VariableNode()
-        variableInfo.accessLevel = AccessEnum.PRIVATE  # Kotlin uses modifiers on classes
+        variableInfo.accessLevel = (
+            AccessEnum.PRIVATE
+        )  # Kotlin uses modifiers on classes
         variableInfo.name = matchGroups[1]
-        variableInfo.dataType = matchGroups[2].replace(":", "").strip() if matchGroups[2] else None
+        variableInfo.dataType = (
+            matchGroups[2].replace(":", "").strip() if matchGroups[2] else None
+        )
         variableInfo.isFinal = matchGroups[0] == "val"
         return variableInfo
 

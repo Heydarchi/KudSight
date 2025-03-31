@@ -20,24 +20,17 @@ class CSharpClassAnalyzer(AbstractAnalyzer):
 
     def initPatterns(self):
 
-
         self.pattern = [
             "(\\;|\\{|\\})*(\\r|\\n)*\\s*(\\r|\\n)*(\\/\\/\\s?[a-zA-Z0-9_].*(\\r|\\n)?)?(\\r|\\n)?\\s?[(public|private)\\s+|(static)\\s+|(final)\\s+].*((class|interface)\\s+)[a-zA-Z0-9_]+\\s?(:)?\\s?(\\n)?[a-zA-Z0-9_\\s]*(\\n)?[{;](\\n)?"
         ]
 
         self.classNamePattern = r"\b(class|interface)\s+([a-zA-Z_][a-zA-Z0-9_]*)"
 
-        self.classImplementPattern = (
-            "(:)\\s?(\\n)?[a-zA-Z0-9_\\s]+\\s?\\n?\\s?[; {]"
-        )
+        self.classImplementPattern = "(:)\\s?(\\n)?[a-zA-Z0-9_\\s]+\\s?\\n?\\s?[; {]"
 
-        self.classExtendPattern = (
-            "(:)\\s?(\\n)?[a-zA-Z0-9_±\s]+\\s?\\n?\\s?[; {]"
-        )
+        self.classExtendPattern = "(:)\\s?(\\n)?[a-zA-Z0-9_±\s]+\\s?\\n?\\s?[; {]"
 
-        self.patternPackageName = (
-            r"^\s*namespace\s+([a-zA-Z0-9_.]+)\s*[{]"
-        )
+        self.patternPackageName = r"^\s*namespace\s+([a-zA-Z0-9_.]+)\s*[{]"
 
     def analyze(self, filePath, lang=None, inputStr=None):
         if inputStr == None:
@@ -46,7 +39,6 @@ class CSharpClassAnalyzer(AbstractAnalyzer):
             fileContent = commentAnalyzer.analyze(filePath, FileTypeEnum.CSHARP)
         else:
             fileContent = inputStr
-
 
         package_name = self.extract_package_name(fileContent)
 
@@ -82,22 +74,25 @@ class CSharpClassAnalyzer(AbstractAnalyzer):
                     tempContent[match.start() :]
                 )
 
-                raw_class_body = tempContent[match.start() : (match.end() + classBoundary)]
+                raw_class_body = tempContent[
+                    match.start() : (match.end() + classBoundary)
+                ]
 
                 cleaned_class_body = "\n".join(
-                    line for line in raw_class_body.splitlines()
+                    line
+                    for line in raw_class_body.splitlines()
                     if "return" not in line.strip()
                 )
 
                 ### Find the variables & methods within the class's boundary
-                methods = CSharpMethodAnalyzer().analyze(None, lang,cleaned_class_body)
+                methods = CSharpMethodAnalyzer().analyze(None, lang, cleaned_class_body)
                 classInfo.methods.extend(methods)
 
-
                 # Remove lines containing 'return' before passing to VariableAnalyzer
-                variables = CSharpVariableAnalyzer().analyze(None, lang, cleaned_class_body)
+                variables = CSharpVariableAnalyzer().analyze(
+                    None, lang, cleaned_class_body
+                )
                 classInfo.variables.extend(variables)
-
 
                 classAnalyzer = CSharpClassAnalyzer()
                 classInfo.classes = classAnalyzer.analyze(
@@ -110,7 +105,7 @@ class CSharpClassAnalyzer(AbstractAnalyzer):
 
                 tempContent = tempContent[match.end() + classBoundary :]
                 match = re.search(pattern, tempContent)
-        print (listOfClasses)
+        print(listOfClasses)
         return listOfClasses
 
     def find_class_pattern(self, pattern, inputStr):
@@ -127,12 +122,10 @@ class CSharpClassAnalyzer(AbstractAnalyzer):
             return className
         return None
 
-
     def extract_class_inheritances(self, inputStr):
         inheritance = []
 
         return inheritance
-
 
     def extract_class_spec(self, inputStr: str, classInfo: ClassNode):
         splittedStr = inputStr.split()

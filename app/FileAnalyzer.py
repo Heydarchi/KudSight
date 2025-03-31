@@ -53,7 +53,11 @@ class FileAnalyzer(AbstractAnalyzer):
     def detectLang(self, fileName):
         if fileName.endswith(".java"):
             return FileTypeEnum.JAVA
-        elif fileName.endswith(".cpp") or fileName.endswith(".h") or fileName.endswith(".hpp"):
+        elif (
+            fileName.endswith(".cpp")
+            or fileName.endswith(".h")
+            or fileName.endswith(".hpp")
+        ):
             return FileTypeEnum.CPP
         elif fileName.endswith(".cs"):
             return FileTypeEnum.CSHARP

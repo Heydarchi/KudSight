@@ -6,6 +6,7 @@ from analyzer.AbstractAnalyzer import *
 from model.AnalyzerEntities import *
 from PythonUtilityClasses import FileReader as FR
 
+
 class CSharpVariableAnalyzer(AbstractAnalyzer):
     def __init__(self) -> None:
         self.pattern = (
@@ -23,11 +24,10 @@ class CSharpVariableAnalyzer(AbstractAnalyzer):
             variable = self.extractVariableInfo(match.group(0))
             if variable is not None:
                 listOfVariables.append(variable)
-            content = content[match.end():]
+            content = content[match.end() :]
             match = re.search(self.pattern, content, flags=re.MULTILINE | re.DOTALL)
 
         return listOfVariables
-
 
     def extractVariableInfo(self, inputString):
         variableInfo = VariableNode()
@@ -48,7 +48,6 @@ class CSharpVariableAnalyzer(AbstractAnalyzer):
             variableInfo.name = parts[1] if len(parts) > 1 else ""
 
         return variableInfo
-
 
 
 if __name__ == "__main__":

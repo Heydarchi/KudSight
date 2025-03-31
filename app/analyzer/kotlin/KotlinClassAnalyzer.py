@@ -19,22 +19,16 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
         self.initPatterns()
 
     def initPatterns(self):
- 
-        self.pattern = [
-            r"\b(class|interface)\s+\w+(\s*:\s*[^{\n]+)?\s*{"
-        ]
 
-        self.classNamePattern = (
-            r"(class|interface)\s+([a-zA-Z0-9_]+)"
-        )
+        self.pattern = [r"\b(class|interface)\s+\w+(\s*:\s*[^{\n]+)?\s*{"]
+
+        self.classNamePattern = r"(class|interface)\s+([a-zA-Z0-9_]+)"
 
         self.classImplementPattern = r":\s*[a-zA-Z0-9_.,\s]+"
-
 
         self.classExtendPattern = r":\s*[a-zA-Z0-9_.,\s]+"
 
         self.patternPackageName = r"^\s*package\s+([a-zA-Z0-9_.]+)"
-
 
     def analyze(self, filePath, lang=None, inputStr=None):
         if inputStr == None:
@@ -43,7 +37,6 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
             fileContent = commentAnalyzer.analyze(filePath, FileTypeEnum.KOTLIN)
         else:
             fileContent = inputStr
-
 
         package_name = self.extract_package_name(fileContent)
         # print("\n********************\n", str(fileContent).rstrip())
@@ -65,11 +58,11 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
                 classInfo.package = package_name
 
                 classInfo.name = self.extract_class_name(
-                     tempContent[match.start() : match.end()]
+                    tempContent[match.start() : match.end()]
                 )
                 # print("====> Class/Interface name: ",classInfo.name)
                 classInfo.relations = self.extract_class_inheritances(
-                     tempContent[match.start() : match.end()]
+                    tempContent[match.start() : match.end()]
                 )
                 # print("====> classInfo.relations: ", classInfo.relations)
                 classInfo = self.extract_class_spec(
@@ -77,9 +70,8 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
                 )
 
                 classBoundary = AnalyzerHelper().findClassBoundary(
-                     tempContent[match.start() :]
+                    tempContent[match.start() :]
                 )
-
 
                 ### Find the variables & methods within the class's boundary
                 methods = KotlinMethodAnalyzer().analyze(
@@ -89,15 +81,18 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
                 )
                 classInfo.methods.extend(methods)
 
-
                 # Remove lines containing 'return' before passing to VariableAnalyzer
-                raw_class_body = tempContent[match.start() : (match.end() + classBoundary)]
+                raw_class_body = tempContent[
+                    match.start() : (match.end() + classBoundary)
+                ]
                 cleaned_class_body = "\n".join(
-                    line for line in raw_class_body.splitlines()
+                    line
+                    for line in raw_class_body.splitlines()
                     if "return" not in line.strip()
                 )
-                variables = KotlinVariableAnalyzer().analyze(None, lang, cleaned_class_body)
-
+                variables = KotlinVariableAnalyzer().analyze(
+                    None, lang, cleaned_class_body
+                )
 
                 classInfo.variables.extend(variables)
 
@@ -112,7 +107,7 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
 
                 tempContent = tempContent[match.end() + classBoundary :]
                 match = re.search(pattern, tempContent)
-        print (listOfClasses)
+        print(listOfClasses)
         return listOfClasses
 
     def find_class_pattern(self, pattern, inputStr):
@@ -129,12 +124,10 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
             return className
         return None
 
-
     def extract_class_inheritances(self, inputStr):
         inheritance = []
 
         return inheritance
-
 
     def extract_class_spec(self, inputStr: str, classInfo: ClassNode):
         splittedStr = inputStr.split()

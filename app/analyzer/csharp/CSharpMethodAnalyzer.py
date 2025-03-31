@@ -8,6 +8,7 @@ from analyzer.csharp.CSharpVariableAnalyzer import CSharpVariableAnalyzer
 from model.AnalyzerEntities import *
 from PythonUtilityClasses import FileReader as FR
 
+
 class CSharpMethodAnalyzer(AbstractAnalyzer):
     def __init__(self):
         self.pattern = (
@@ -23,10 +24,12 @@ class CSharpMethodAnalyzer(AbstractAnalyzer):
         match = re.search(self.pattern, content)
         while match:
             methodInfo = self.extractMethodInfo(match.group(0))
-            boundary = AnalyzerHelper().findMethodBoundary(content[match.start():])
-            methodInfo.variables = CSharpVariableAnalyzer().analyze(None, None, content[match.start():match.end() + boundary])
+            boundary = AnalyzerHelper().findMethodBoundary(content[match.start() :])
+            methodInfo.variables = CSharpVariableAnalyzer().analyze(
+                None, None, content[match.start() : match.end() + boundary]
+            )
             methods.append(methodInfo)
-            content = content[match.end() + boundary:]
+            content = content[match.end() + boundary :]
             match = re.search(self.pattern, content)
         return methods
 

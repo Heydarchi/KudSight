@@ -9,9 +9,7 @@ from PythonUtilityClasses import FileReader as FR
 
 class CppVariableAnalyzer(AbstractAnalyzer):
     def __init__(self) -> None:
-        self.pattern = (
-            r"^\s*(?:static\s+)?(?:const\s+)?([a-zA-Z_][a-zA-Z0-9_:<>*&\s]*)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*[;=]"
-        )
+        self.pattern = r"^\s*(?:static\s+)?(?:const\s+)?([a-zA-Z_][a-zA-Z0-9_:<>*&\s]*)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*[;=]"
 
     def analyze(self, filePath, lang=None, classStr=None):
         listOfVariables = []
@@ -20,7 +18,7 @@ class CppVariableAnalyzer(AbstractAnalyzer):
         match = re.search(self.pattern, content, flags=re.MULTILINE | re.DOTALL)
         while match:
             listOfVariables.append(self.extractVariableInfo(match.group(0)))
-            content = content[match.end():]
+            content = content[match.end() :]
             match = re.search(self.pattern, content, flags=re.MULTILINE | re.DOTALL)
 
         return listOfVariables
