@@ -66,12 +66,22 @@ pip install -r requirements.txt
 <br/>
 
 ## **How to run**
-After the packages above are installed go to the Analyzer folder and run the command below
+
+#### **To run Web server** 
+
 ```
-cd app
-python FileAnalyzer.py [folder/file path]
+python app.py
 ```
-#### **To run sample** 
+
+
+<br/>
+>Open the below url in a browser
+
+```
+http://127.0.0.1:5000/
+```
+
+#### **To run sample from command line** 
 
 ```
 python FileAnalyzer.py test/test_files/java
