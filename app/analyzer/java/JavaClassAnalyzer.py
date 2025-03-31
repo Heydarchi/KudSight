@@ -23,7 +23,8 @@ class JavaClassAnalyzer(AbstractAnalyzer):
         self.pattern = [
             "(\\;|\\{|\\})*(\\r|\\n)*\\s*(\\r|\\n)*(\\/\\/\\s?[a-zA-Z0-9_].*(\\r|\\n)?)?(\\r|\\n)?\\s?[(public|private)\\s+|(static)\\s+|(final)\\s+].*((class|interface|implements|extends)\\s+[a-zA-Z0-9_\\s]*)+[:{;]"
         ]
-        self.classNamePattern = "(class|interface)\\s+([a-zA-Z0-9_])+\\s+"
+        self.classNamePattern = r"(class|interface)\s+([a-zA-Z_][a-zA-Z0-9_]*)"
+
         self.classImplementPattern = "(implements)\\s+([a-zA-Z0-9_])+[:{;\\r\\n\\s]"
         self.classExtendPattern = "(extends)\\s+([a-zA-Z0-9_])+[:{;\\r\\n\\s]"
         self.patternPackageName = r"^\s*package\s+([a-zA-Z0-9_.]+)\s*;"
