@@ -2,7 +2,7 @@ class AnalyzerHelper:
     def __init__(self) -> None:
         pass
 
-    def findClassBoundary(self, lang, inputStr):
+    def findClassBoundary(self, inputStr):
         bracketCount = 0
         index = 0
         for index in range(len(inputStr)):
@@ -14,7 +14,7 @@ class AnalyzerHelper:
                 bracketCount = bracketCount + 1
         return index
 
-    def findMethodBoundary(self, lang, inputStr):
+    def findMethodBoundary(self, inputStr):
         bracketCount = 0
         index = 0
         for index in range(len(inputStr)):

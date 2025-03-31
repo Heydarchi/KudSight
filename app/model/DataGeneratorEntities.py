@@ -5,6 +5,7 @@ from dataclasses import dataclass, field, asdict
 
 @dataclass
 class ClassData:
+    package: str = ""
     id: str = ""
     type: str = "class"
     attributes: Optional[List[str]] = field(default_factory=list)

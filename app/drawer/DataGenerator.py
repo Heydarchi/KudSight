@@ -29,53 +29,46 @@ class DataGenerator:
             "var",
         ]
 
-    def generateData(self, listOfClassNodes: ClassNode):
+    def generateData(self, listOfClassNodes: list[ClassNode]):
         dataList = list()
 
-        print(listOfClassNodes)
-
         for node in listOfClassNodes:
-
             self.dumpClass(node)
 
-        # print("\n\n")
-        # print(self.graphData)
         json_output = self.graphData.to_json()
 
         date_time = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
-
         filePath = "static/out/data" + date_time + ".json"
         self.writeToFile(filePath, json_output)
 
     def dumpClass(self, classInfo: ClassNode):
         classData = ClassData()
+        classData.package = classInfo.package or ""  # Default to empty string
         classData.id = classInfo.name
+        classData.type = "class"  # Explicitly set type
 
-        # Convert methods explicitly (currently empty, but future-proof)
+        # Include methods by name
         classData.methods = [
             method.name if hasattr(method, "name") else str(method)
             for method in classInfo.methods
         ]
 
-        # Explicitly handle attributes (variables)
         classData.attributes = [
-            f"{var.accessLevel.name.lower()} {var.dataType} {var.name}".replace(
+            f"{var.accessLevel.name.lower()} {'static ' if var.isStatic else ''}{var.dataType} {var.name}".replace(
                 ";", ""
             ).strip()
             for var in classInfo.variables
-            if var.dataType not in self.dataTypeToIgnore
+            if var.name not in ["return"]  # Avoid junk extracted from method bodies
         ]
 
         self.graphData.nodes.append(classData)
 
-        # Handle relationships explicitly
+        # Include relationships
         for relation in classInfo.relations:
             dependency = Dependency()
             dependency.source = classInfo.name
             dependency.target = self.fix_name_issue(relation.name)
-            dependency.relation = (
-                relation.relationship.name.lower()
-            )  # Clearly specify relationship type
+            dependency.relation = relation.relationship.name.lower()
             self.graphData.links.append(dependency)
 
     def writeToFile(self, fileName, json_output):
@@ -88,6 +81,7 @@ class DataGenerator:
         return name
 
 
+# Optional test run (standalone)
 if __name__ == "__main__":
     print(sys.argv)
     classInfo = ClassNode()

@@ -5,6 +5,7 @@ The aim of this python project is to find and exposing the class relationship
 - C++
 - Java 
 - CSharp (C#)
+- Kotlin
 
 <br/>
 
@@ -39,10 +40,10 @@ git clone https://github.com/Heydarchi/ClassRelExposer.git
 git submodule update --init --recursive
 ```
 
-3. Install Python 3.8 or a newer version, PythonIsPython3, Graphviz, and PyQt5:
+1. Install Python 3.8 or a newer version, PythonIsPython3:
 
 ```
-sudo apt install python3 python-is-python3 graphviz python3-venv -y
+sudo apt install python3 python-is-python3  python3-venv -y
 ```
 &ensp;
 
@@ -65,12 +66,22 @@ pip install -r requirements.txt
 <br/>
 
 ## **How to run**
-After the packages above are installed go to the Analyzer folder and run the command below
+
+#### **To run Web server** 
+
 ```
-cd app
-python FileAnalyzer.py [folder/file path]
+python app.py
 ```
-#### **To run sample** 
+
+
+<br/>
+>Open the below url in a browser
+
+```
+http://127.0.0.1:5000/
+```
+
+#### **To run sample from command line** 
 
 ```
 python FileAnalyzer.py test/test_files/java

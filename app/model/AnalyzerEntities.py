@@ -48,6 +48,7 @@ class UmlRelationMap:
 
 @dataclass
 class ClassNode:
+    package: str = ""
     name: str = ""
     accessLevel: AccessEnum = AccessEnum.PUBLIC
     isStatic: bool = False

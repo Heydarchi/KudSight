@@ -24,6 +24,7 @@ export function setupPanel(graphData) {
     function showDetails(node) {
       itemDetails.innerHTML = `
         <b>ID:</b> ${node.id}<br/>
+        <b>Package:</b> ${node.package}<br/>
         <b>Type:</b> ${node.type}<br/>
         ${node.module ? `<b>Module:</b> ${node.module}<br/>` : ''}
         ${node.version ? `<b>Version:</b> ${node.version}<br/>` : ''}

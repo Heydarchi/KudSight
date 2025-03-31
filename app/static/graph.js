@@ -138,6 +138,7 @@ function createUMLNode(node) {
 function getNodeLabel(node) {
   return `
     <div>
+      <b>${node.package}</b><br/>
       <b>${node.id}</b><br/>
       Type: ${node.type}<br/>
       ${node.methods ? `Methods: ${node.methods.length}<br/>` : ''}
