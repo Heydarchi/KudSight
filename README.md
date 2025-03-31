@@ -1,118 +1,125 @@
-# ClassRelExposer
-The aim of this python project is to find and exposing the class relationship
+# KudSight
 
-### The supported languages are:
-- C++
-- Java 
-- CSharp (C#)
-- Kotlin
+**KudSight** is a Python-based static analysis tool that helps visualize **class relationships** in source code across several programming languages.
 
-<br/>
-
-The code is tested for Java but not that much for C++ and C-Sharp. Of course, it is not completed yet and has some flaws and issues in processing. Very welcome to report or any kind of contribution.
-
-Feel free to create a ticket or send me a message/report.
-
-<br/>
-
-### PlantUml
-
-Generating the PNG files is based on [PlantUml](http://www.plantuml.com) that I put a jar version in this project.
+It supports extracting inheritance, implementation, and composition relations, and can render UML-style diagrams in browser..
 
 
-## Installation
-#### Note : The 1st & 2nd steps can be skipped by running the `setup.sh` script.
-```
+## ✨ Features
+
+- Language Support: Java, C++, C#, Kotlin
+- Class relationship extraction: inheritance, implementation, dependencies
+- Diagram generation with PlantUML
+- Web-based UI and CLI
+- Dockerized for cross-platform use
+
+
+## 🧪 Supported Languages
+
+- ✅ Java (primary support)
+- ⚠️ C++ (partial support)
+- ⚠️ C# (partial support)
+- ⚠️ Kotlin (experimental)
+
+> Java, C++ and C# support is most stable. Other languages are work-in-progress. Contributions welcome!
+
+
+## 🚀 Installation
+
+> **Quick Start:** Run the setup script:
+```bash
 ./setup.sh
 ```
-&ensp;
 
-1. Clone the project and its submodule (Leav it if you have already cloned the repo!):
+### 🔧 Manual Setup
 
-```
-git clone https://github.com/Heydarchi/ClassRelExposer.git
-```
-&ensp;
+1. **Clone the repo with submodules**:
 
-2. Inside the cloned folder, run the following command to update the submodule:
-
-```
-git submodule update --init --recursive
+```bash
+git clone --recurse-submodules https://github.com/Heydarchi/KudSight.git
+cd KudSight
 ```
 
-1. Install Python 3.8 or a newer version, PythonIsPython3:
+2. **Install Python and dependencies**:
 
-```
-sudo apt install python3 python-is-python3  python3-venv -y
-```
-&ensp;
-
-4. Create & Activate Virtual Environment 
-
-```
+```bash
+sudo apt install python3 python-is-python3 python3-venv -y
 python3 -m venv venv
 source venv/bin/activate
-```
-&ensp;
-
-5. Install python packages
-
-```
 pip install -r requirements.txt
 ```
-&ensp;
 
 
-<br/>
+## 📊 Usage
 
-## **How to run**
+### 🌐 Web Server (Recommended)
 
-#### **To run Web server** 
-
-```
+```bash
 python app.py
 ```
 
-
-<br/>
->Open the below url in a browser
+Then open in your browser:
 
 ```
 http://127.0.0.1:5000/
 ```
 
-#### **To run sample from command line** 
+### 🧪 Command Line
 
-```
+```bash
 python FileAnalyzer.py test/test_files/java
 ```
 
->The result can be found in the **out** folder
-
-<br/>
-
-## Docker
-
-
-### Build Docker
+Results are saved to:
 
 ```
+app/static/out/
+```
+
+
+## 🐳 Docker Support
+
+### 🔨 Build the Docker Image
+
+```bash
 docker build -t kudsight .
 ```
 
-### Run by Docker
+### ▶️ Run KudSight in Docker
 
+```bash
+docker run -it --rm --network host \
+  -v "$PWD/app/static/out:/app/static/out" \
+  -v "$HOME/Projects/code:/mnt/code" \
+  -p 5000:5000 \
+  kudsight
 ```
-docker run -it --network host  --rm   -v "$PWD/app/static/out:/app/static/out"   -v "$HOME/Projects/code:/mnt/code"   -p 5000:5000   kudsight
-```
+
+Now visit: [http://localhost:5000](http://localhost:5000)
 
 
-## Contributing
+## 🖼️ PlantUML Integration
 
-Thank you for your interest in contributing to SELinux Explorer! We welcome and appreciate any contributions, whether it's bug reports, feature requests, code, documentation, or testing. Please refer to our [CONTRIBUTION.md](CONTRIBUTING.md) file for detailed guidelines on how to set up your development environment, check code style, run tests, and submit your changes.
-
-## Features and TODOs
-
-This project is under active development, and we're continuously working on improving and expanding its functionality. For a detailed list of features and tasks that we're planning to implement, please refer to the [TODO List](TODO.md) file. We welcome your contributions and feedback, so feel free
+UML diagrams are generated using a bundled [PlantUML JAR](https://plantuml.com/download). No external setup is required.
 
 
+## 🤝 Contributing
+
+We ❤️ contributions! Whether it's code, bug reports, or docs — you're welcome.
+
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
+
+
+## 🚧 Roadmap
+
+Check [TODO.md](TODO.md) for upcoming features and known issues. Your input is appreciated.
+
+
+## 🪪 License
+
+Licensed under the **Apache License 2.0**.
+
+
+## 📢 Contact
+
+Have ideas, feedback, or bugs to report? Open an [issue](https://github.com/Heydarchi/KudSight/issues) or start a discussion on GitHub!
