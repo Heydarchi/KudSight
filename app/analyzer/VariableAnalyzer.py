@@ -15,7 +15,8 @@ class VariableAnalyzer(AbstractAnalyzer):
 
     def initPatterns(self):
         self.pattern[FileTypeEnum.CPP] = (
-            "[\\s;\\n{}(::)]([a-zA-Z0-9_<>])+\\s+(\\*)?\\s?[a-zA-Z_,<>][a-zA-Z0-9_,<>]*\\s?[\\r\\n]?[;=]"
+            "[\\s;\\n{}(::)]([a-zA-Z0-9_<>])+\\s+(\\*)?"
+            "\\s?[a-zA-Z_,<>][a-zA-Z0-9_,<>]*\\s?[\\r\\n]?[;=]"
         )
         self.pattern[FileTypeEnum.JAVA] = (
             "[\\s;\\n{}}(::)].*[(public|private|protected)\\s+|(static)\\s+|(final)\\s+]?(([a-zA-Z0-9_<>])+::)?([a-zA-Z0-9_<>])+\\s+[a-zA-Z_,<>][a-zA-Z0-9_,<>]*\\s?[\\r\\n]?[;=]"

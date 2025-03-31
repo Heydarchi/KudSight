@@ -13,28 +13,23 @@ class CommentAnalyzer(AbstractAnalyzer):
         self.initPatterns()
 
     def initPatterns(self):
-        self.pattern[FileTypeEnum.CPP] = ["//", "*/"]
-        self.pattern[FileTypeEnum.JAVA] = ["//", "*/"]
 
         self.pattern[FileTypeEnum.CPP] = [
-            "(\\/\\/).*",
-            "(\\/\\*).*([a-zA-Z0-9\\s]*|\\r|\\n).*(\\*\\/)",
-            '(\\").*[\\r\\na-zA-Z0-9\\s].*(\\")',
+            "(\\/\\/).*",                                               # single-line
+            "(\\/\\*).*([a-zA-Z0-9\\s]*|\\r|\\n).*(\\*\\/)",            # multi-line
+            '(\\").*[\\r\\na-zA-Z0-9\\s].*(\\")'                        # string literals
         ]
         self.pattern[FileTypeEnum.JAVA] = [
             "(//).*[a-zA-Z0-9\\s]*(\\r|\\n).*",
             "(\\/\\*).*[a-zA-Z0-9\\s\\r\\n].*(\\*\\/)",
             '(\\").*[\\r\\na-zA-Z0-9\\s].*(\\")',
         ]
-
         self.pattern[FileTypeEnum.KOTLIN] = [
             r"(//).*[^\n\r]*",  # single-line comment
             r"(?s)/\*.*?\*/",  # multi-line comment (non-greedy with DOTALL)
             r'"(?:\\.|[^"\\])*"',  # string literals (avoid replacing inside them)
         ]
 
-        self.pattern[FileTypeEnum.CPP] = ["\n", "/*"]
-        self.pattern[FileTypeEnum.JAVA] = ["\n", "/*"]
 
         self.replaceByStr[FileTypeEnum.CPP] = ["//@", "/*@*/", '"@"']
         self.replaceByStr[FileTypeEnum.JAVA] = ["//@", "/*@*/", '"@"']

@@ -18,6 +18,7 @@ class ClassAnalyzer(AbstractAnalyzer):
         self.initPatterns()
 
     def initPatterns(self):
+# Used to match C++ class declarations
         self.pattern[FileTypeEnum.CPP] = [
             "(\\;|\\{|\\})*(\\r|\\n)*\\s*(\\r|\\n)*(\\/\\/\\s?[a-zA-Z0-9_].*(\\r|\\n)?)?(\\r|\\n)?\\s?[(public|private)\\s+|(static)\\s+|(final)\\s+].*((class|interface)\\s+)[a-zA-Z0-9_]+\\s?(:)?\\s?(\\n)?[a-zA-Z0-9_\\s]*(\\n)?[{;](\\n)?"
         ]
@@ -27,10 +28,10 @@ class ClassAnalyzer(AbstractAnalyzer):
         self.pattern[FileTypeEnum.CSHARP] = [
             "(\\;|\\{|\\})*(\\r|\\n)*\\s*(\\r|\\n)*(\\/\\/\\s?[a-zA-Z0-9_].*(\\r|\\n)?)?(\\r|\\n)?\\s?[(public|private)\\s+|(static)\\s+|(final)\\s+].*((class|interface)\\s+)[a-zA-Z0-9_]+\\s?(:)?\\s?(\\n)?[a-zA-Z0-9_\\s]*(\\n)?[{;](\\n)?"
         ]
-
         self.pattern[FileTypeEnum.KOTLIN] = [
             r"\b(class|interface)\s+\w+(\s*:\s*[^{\n]+)?\s*{"
         ]
+
 
         self.classNamePattern[FileTypeEnum.CPP] = "(class)\\s+([a-zA-Z0-9_])*\\s+"
         self.classNamePattern[FileTypeEnum.JAVA] = (
@@ -39,10 +40,10 @@ class ClassAnalyzer(AbstractAnalyzer):
         self.classNamePattern[FileTypeEnum.CSHARP] = (
             "(class|interface)\\s+([a-zA-Z0-9_])+\\s?"
         )
-
         self.classNamePattern[FileTypeEnum.KOTLIN] = (
             r"(class|interface)\s+([a-zA-Z0-9_]+)"
         )
+
 
         self.classImplementPattern[FileTypeEnum.CPP] = "(class)\\s+([a-zA-Z0-9_])*\\s+"
         self.classImplementPattern[FileTypeEnum.JAVA] = (
@@ -53,6 +54,7 @@ class ClassAnalyzer(AbstractAnalyzer):
         )
         self.classImplementPattern[FileTypeEnum.KOTLIN] = r":\s*[a-zA-Z0-9_.,\s]+"
 
+
         self.classExtendPattern[FileTypeEnum.CPP] = "(class)\\s+([a-zA-Z0-9_])*\\s+"
         self.classExtendPattern[FileTypeEnum.JAVA] = (
             "(extends)\\s+([a-zA-Z0-9_])+[:{;\\r\\n\\s]"
@@ -62,6 +64,8 @@ class ClassAnalyzer(AbstractAnalyzer):
         )
         self.classExtendPattern[FileTypeEnum.KOTLIN] = r":\s*[a-zA-Z0-9_.,\s]+"
 
+
+        self.patternPackageName[FileTypeEnum.CPP] = r"^\s*namespace\s+([a-zA-Z_][a-zA-Z0-9_:]*)\s*{"
         self.patternPackageName[FileTypeEnum.JAVA] = (
             r"^\s*package\s+([a-zA-Z0-9_.]+)\s*;"
         )

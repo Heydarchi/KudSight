@@ -16,7 +16,9 @@ class MethodAnalyzer(AbstractAnalyzer):
 
     def initPatterns(self):
         self.pattern[FileTypeEnum.CPP] = (
-            "[\\s;\\n{}(::)]([a-zA-Z0-9_<>])*\\s?\\(([a-zA-Z0-9_,\\s<>]|(\\s\\*)|(\\*\\s))*\\)\\s?[{;:\\n\\r].*"
+            "[\\s;\\n{}(::)]([a-zA-Z0-9_<>])*\\s?"
+            "\\(([a-zA-Z0-9_,\\s<>]|(\\s\\*)|(\\*\\s))*\\)"
+            "\\s?[{;:\\n\\r].*"
         )
         self.pattern[FileTypeEnum.JAVA] = (
             "(public|private|protected)?\s*(static)?\s*(default)?\s*[\w\<\>\[\]]+\s+\w+\s*\([^\)]*\)\s*[{;]"
