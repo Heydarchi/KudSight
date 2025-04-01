@@ -5,7 +5,7 @@ from analyzer.cpp.CppMethodAnalyzer import *
 from analyzer.cpp.CppVariableAnalyzer import *
 from analyzer.common.AnalyzerHelper import *
 from analyzer.common.CommentAnalyzer import *
-from PythonUtilityClasses import FileReader as FR
+from utils.FileReader import *
 
 
 class CppClassAnalyzer(AbstractAnalyzer):
@@ -42,7 +42,7 @@ class CppClassAnalyzer(AbstractAnalyzer):
 
     def analyze(self, filePath, lang=None, inputStr=None):
         if inputStr == None:
-            fileReader = FR.FileReader()
+            fileReader = FileReader()
             commentAnalyzer = CommentAnalyzer()
             fileContent = commentAnalyzer.analyze(filePath, FileTypeEnum.CPP)
         else:

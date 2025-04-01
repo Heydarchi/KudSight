@@ -2,7 +2,7 @@ import os, sys
 from model.AnalyzerEntities import *
 from model.DataGeneratorEntities import *
 
-from PythonUtilityClasses import FileWriter as FW
+from utils.FileWriter import *
 from datetime import datetime
 
 

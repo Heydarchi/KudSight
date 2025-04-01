@@ -5,7 +5,7 @@ from analyzer.csharp.CSharpMethodAnalyzer import *
 from analyzer.csharp.CSharpVariableAnalyzer import *
 from analyzer.common.AnalyzerHelper import *
 from analyzer.common.CommentAnalyzer import *
-from PythonUtilityClasses import FileReader as FR
+from utils.FileReader import *
 
 
 class CSharpClassAnalyzer(AbstractAnalyzer):
@@ -34,7 +34,7 @@ class CSharpClassAnalyzer(AbstractAnalyzer):
 
     def analyze(self, filePath, lang=None, inputStr=None):
         if inputStr == None:
-            fileReader = FR.FileReader()
+            fileReader = FileReader()
             commentAnalyzer = CommentAnalyzer()
             fileContent = commentAnalyzer.analyze(filePath, FileTypeEnum.CSHARP)
         else:

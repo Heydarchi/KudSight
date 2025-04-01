@@ -5,7 +5,7 @@ from analyzer.java.JavaMethodAnalyzer import *
 from analyzer.java.JavaVariableAnalyzer import *
 from analyzer.common.AnalyzerHelper import *
 from analyzer.common.CommentAnalyzer import *
-from PythonUtilityClasses import FileReader as FR
+from utils.FileReader import *
 
 
 class JavaClassAnalyzer(AbstractAnalyzer):
@@ -31,7 +31,7 @@ class JavaClassAnalyzer(AbstractAnalyzer):
 
     def analyze(self, filePath, lang=None, inputStr=None):
         if inputStr == None:
-            fileReader = FR.FileReader()
+            fileReader = FileReader()
             commentAnalyzer = CommentAnalyzer()
             fileContent = commentAnalyzer.analyze(filePath, FileTypeEnum.JAVA)
         else:
