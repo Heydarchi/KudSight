@@ -100,6 +100,8 @@ class CSharpClassAnalyzer(AbstractAnalyzer):
                     )
                 )
 
+                classInfo.relations = self.remove_primitive_types(classInfo.relations)
+
                 classAnalyzer = CSharpClassAnalyzer()
                 classInfo.classes = classAnalyzer.analyze(
                     None,
@@ -184,6 +186,28 @@ class CSharpClassAnalyzer(AbstractAnalyzer):
 
     def extract_class_params(self, inputStr):
         return CSharpMethodAnalyzer().extractParams(inputStr)
+
+    def remove_primitive_types(self, relations):
+        primitives = {
+            "void",
+            "bool",
+            "byte",
+            "sbyte",
+            "char",
+            "decimal",
+            "double",
+            "float",
+            "int",
+            "uint",
+            "long",
+            "ulong",
+            "short",
+            "ushort",
+            "string",
+            "object",
+        }
+
+        return [rel for rel in relations if rel.name not in primitives]
 
 
 if __name__ == "__main__":

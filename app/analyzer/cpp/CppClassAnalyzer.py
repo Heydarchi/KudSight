@@ -21,13 +21,7 @@ class CppClassAnalyzer(AbstractAnalyzer):
     def initPatterns(self):
 
         self.pattern = [
-            r"(template\s*<[^>]+>\s*)?"
-            r"(?:\s*(public|private|protected|static|final)\s+)*"
-            r"(class|struct)\s+"
-            r"[a-zA-Z_][a-zA-Z0-9_]*"
-            r"(?:\s+final)?"
-            r"(?:\s*:\s*[^({]+)?"
-            r"\s*[{;]"
+            r"(template\s*<[^>]+>\s*)?(?:\s*(public|private|protected|static|final)\s+)*(class|struct)\s+[a-zA-Z_][a-zA-Z0-9_]*(?:\s+final)?(?:\s*:\s*[^({]+)?\s*[{;]"
         ]
 
         self.classNamePattern = r"\b(class|struct)\s+([a-zA-Z_][a-zA-Z0-9_]*)"
@@ -53,17 +47,16 @@ class CppClassAnalyzer(AbstractAnalyzer):
         listOfClasses = list()
         for pattern in self.pattern:
             tempContent = fileContent
-            # print ("\nregx: ", pattern)
+            print("\nregx: ", pattern)
 
             match = self.find_class_pattern(pattern, tempContent)
             while match != None:
                 classInfo = ClassNode()
-                """print(
+                print(
                     "-------Match at begin % s, end % s "
                     % (match.start(), match.end()),
                     tempContent[match.start() : match.end()],
                 )
-                """
 
                 classInfo.package = package_name
 
@@ -112,18 +105,22 @@ class CppClassAnalyzer(AbstractAnalyzer):
                     )
                 )
 
-                classAnalyzer = CppClassAnalyzer()
+                classInfo.relations = self.remove_primitive_types(classInfo.relations)
+
+                """classAnalyzer = CppClassAnalyzer()
                 classInfo.classes = classAnalyzer.analyze(
                     None,
                     lang,
                     inputStr=tempContent[match.end() : (match.end() + classBoundary)],
                 )
+                """
 
                 listOfClasses.append(classInfo)
 
                 tempContent = tempContent[match.end() + classBoundary :]
                 match = re.search(pattern, tempContent)
 
+        print(listOfClasses)
         return listOfClasses
 
     def find_class_pattern(self, pattern, inputStr):
@@ -201,11 +198,40 @@ class CppClassAnalyzer(AbstractAnalyzer):
                         name=param.strip(), relationship=InheritanceEnum.DEPENDED
                     )
                 )
-        print("inheritance_list: ", inheritance_list)
+        # print("inheritance_list: ", inheritance_list)
         return inheritance_list
 
     def extract_class_params(self, inputStr):
         return CppMethodAnalyzer().extractParams(inputStr)
+
+    def remove_primitive_types(self, relations):
+        primitives = {
+            "void",
+            "bool",
+            "char",
+            "wchar_t",
+            "char16_t",
+            "char32_t",
+            "short",
+            "int",
+            "long",
+            "float",
+            "double",
+            "signed",
+            "unsigned",
+            "size_t",
+            "ptrdiff_t",
+            "int8_t",
+            "int16_t",
+            "int32_t",
+            "int64_t",
+            "uint8_t",
+            "uint16_t",
+            "uint32_t",
+            "uint64_t",
+        }
+
+        return [rel for rel in relations if rel.name not in primitives]
 
 
 if __name__ == "__main__":

@@ -6,10 +6,10 @@
 
 namespace MyCompany::Core {
 
-    class SuperBase{
+    class SuperBase {
     public:
         SuperBase(){}
-    }
+    };
 
     // Base class
     class Base: public SuperBase {

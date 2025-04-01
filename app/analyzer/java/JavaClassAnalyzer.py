@@ -94,6 +94,8 @@ class JavaClassAnalyzer(AbstractAnalyzer):
                     )
                 )
 
+                classInfo.relations = self.remove_primitive_types(classInfo.relations)
+
                 classAnalyzer = JavaClassAnalyzer()
                 classInfo.classes = classAnalyzer.analyze(
                     None,
@@ -202,6 +204,23 @@ class JavaClassAnalyzer(AbstractAnalyzer):
 
     def extract_class_params(self, inputStr):
         return JavaMethodAnalyzer().extractParams(inputStr)
+
+    def remove_primitive_types(self, relations):
+        primitives = {
+            "void",
+            "boolean",
+            "byte",
+            "char",
+            "short",
+            "int",
+            "long",
+            "float",
+            "double",
+            "String",
+            "Object",
+        }
+
+        return [rel for rel in relations if rel.name not in primitives]
 
 
 if __name__ == "__main__":

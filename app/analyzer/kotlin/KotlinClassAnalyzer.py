@@ -109,6 +109,8 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
                     )
                 )
 
+                classInfo.relations = self.remove_primitive_types(classInfo.relations)
+
                 classAnalyzer = KotlinClassAnalyzer()
 
                 classInfo.classes = classAnalyzer.analyze(
@@ -208,6 +210,24 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
 
     def extract_class_params(self, inputStr):
         return KotlinMethodAnalyzer().extractParams(inputStr)
+
+    def remove_primitive_types(self, relations):
+        primitives = {
+            "Boolean",
+            "Byte",
+            "Char",
+            "Short",
+            "Int",
+            "Long",
+            "Float",
+            "Double",
+            "String",
+            "Unit",
+            "Any",
+            "Nothing",
+        }
+
+        return [rel for rel in relations if rel.name not in primitives]
 
 
 if __name__ == "__main__":
