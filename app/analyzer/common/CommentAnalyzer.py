@@ -4,7 +4,7 @@ from pathlib import Path
 import re
 from analyzer.AbstractAnalyzer import *
 from model.AnalyzerEntities import *
-from PythonUtilityClasses import FileReader as FR
+from utils.FileReader import *
 
 
 class CommentAnalyzer(AbstractAnalyzer):
@@ -60,7 +60,7 @@ class CommentAnalyzer(AbstractAnalyzer):
         return content
 
     def analyze(self, filePath, lang, inputStr=None):
-        fileReader = FR.FileReader()
+        fileReader = FileReader()
         content = inputStr if inputStr is not None else fileReader.read_file(filePath)
 
         cleaned = self.remove_comments(content, lang)

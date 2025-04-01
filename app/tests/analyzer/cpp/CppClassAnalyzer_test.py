@@ -1,7 +1,7 @@
 import unittest
 from analyzer.cpp.CppClassAnalyzer import *
 from model.AnalyzerEntities import FileTypeEnum
-from PythonUtilityClasses.FileReader import FileReader
+from utils.FileReader import FileReader
 import re
 
 

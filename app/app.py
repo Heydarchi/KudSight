@@ -1,7 +1,7 @@
 from flask import Flask, request, render_template, jsonify, send_from_directory
 import os
 from werkzeug.utils import secure_filename
-from FileAnalyzer import FileAnalyzer  # ✅ Make sure this import is valid
+from FileAnalyzer import FileAnalyzer
 
 UPLOAD_FOLDER = "uploads"
 RESULT_FOLDER = "static/out"
@@ -11,10 +11,12 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULT_FOLDER, exist_ok=True)
 
+APP_VERSION = "V0.3.0-beta"
+
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", version=APP_VERSION)
 
 
 @app.route("/upload", methods=["POST"])
@@ -27,7 +29,7 @@ def upload_folder():
     try:
         print(f"Analyzing: {folder_path}")
         fileAnalyzer = FileAnalyzer()
-        fileAnalyzer.analyze(folder_path, None)  # ✅ Your actual analyzer call
+        fileAnalyzer.analyze(folder_path, None)
         return jsonify({"status": "ok"})
     except Exception as e:
         print(f"Error during analysis: {e}")

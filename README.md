@@ -1,37 +1,47 @@
 # KudSight
 
+
+ **This app is experimental and has not fully tested !**
+</br>
+
 **KudSight** is a Python-based static analysis tool that helps visualize **class relationships** in source code across several programming languages.
 
 It supports extracting inheritance, implementation, and composition relations, and can render UML-style diagrams in browser..
 
 
-## ✨ Features
+## Features
 
 - Language Support: Java, C++, C#, Kotlin
 - Class relationship extraction: inheritance, implementation, dependencies
-- Diagram generation with PlantUML
 - Web-based UI and CLI
 - Dockerized for cross-platform use
 
 
-## 🧪 Supported Languages
+## Supported Languages
 
-- ✅ Java (primary support)
-- ⚠️ C++ (partial support)
-- ⚠️ C# (partial support)
-- ⚠️ Kotlin (experimental)
+- Java (primary support)
+- C++ (partial support)
+- C# (partial support)
+- Kotlin (experimental)
 
 > Java, C++ and C# support is most stable. Other languages are work-in-progress. Contributions welcome!
 
 
-## 🚀 Installation
+
+**Note**
+There are two ways to use this app. The first one is installing all the packages and running the app. And the second one is using docker.
+I recommend using docker for sake of convenience and avoiding any conflict in installing the packages. So if you want to use docker you can jump to that section.
+</br>
+
+## Setting up manually
+### Installation
 
 > **Quick Start:** Run the setup script:
 ```bash
 ./setup.sh
 ```
 
-### 🔧 Manual Setup
+#### Manual Setup
 
 1. **Clone the repo with submodules**:
 
@@ -50,9 +60,9 @@ pip install -r requirements.txt
 ```
 
 
-## 📊 Usage
+### Usage
 
-### 🌐 Web Server (Recommended)
+#### Web Server (Recommended)
 
 ```bash
 python app.py
@@ -64,7 +74,7 @@ Then open in your browser:
 http://127.0.0.1:5000/
 ```
 
-### 🧪 Command Line
+#### Command Line
 
 ```bash
 python FileAnalyzer.py test/test_files/java
@@ -76,32 +86,56 @@ Results are saved to:
 app/static/out/
 ```
 
+</br>
 
-## 🐳 Docker Support
+## Docker
 
-### 🔨 Build the Docker Image
+
+### Pull the Docker Image from DockerHub and Run
+
+I have provide a docker image including the latest version of the application that you can easily pull and run it without setting up anything on you PC.
+
+*Notes:*
+- Create an out folder in the directory you want to run the docker to store the analysis result. (Mandatory)
+- You can mount other folder, drivers and disks if you like. But the first part "$PWD/out:/app/static/out" should be kept.
+
+Pull the image:
+```bash
+docker pull mhheydarchi/kudsight:latest
+```
+
+Run it:
+```bash
+docker run -it --rm --network host -v "$PWD/out:/app/static/out" -v "$HOME:/home/$USER" -v "/media:/media" -p 5000:5000  mhheydarchi/kudsight:latest
+```
+
+Now visit: [http://localhost:5000](http://localhost:5000)
+
+</br>
+
+### Build the Docker Image locally and Run it
+
+if you're interested to build the docker image locally and use it you can follow these steps:
+
+### Build the Docker Image
 
 ```bash
 docker build -t kudsight .
 ```
 
-### ▶️ Run KudSight in Docker
+#### Run KudSight in Docker
+
+> Create an out folder in the directory you want to run the docker to store the analysis result. (Mandatory)
+> You can mount other folder, drivers and disks if you like. But the first part "$PWD/out:/app/static/out" should be kept.
 
 ```bash
-docker run -it --rm --network host \
-  -v "$PWD/app/static/out:/app/static/out" \
-  -v "$HOME/Projects/code:/mnt/code" \
-  -p 5000:5000 \
-  kudsight
+docker run -it --rm --network host -v "$PWD/out:/app/static/out" -v "$HOME:/home/$USER" -v "/media:/media" -p 5000:5000  kudsight
 ```
+
 
 Now visit: [http://localhost:5000](http://localhost:5000)
 
-
-## 🖼️ PlantUML Integration
-
-UML diagrams are generated using a bundled [PlantUML JAR](https://plantuml.com/download). No external setup is required.
-
+</br>
 
 ## 🤝 Contributing
 

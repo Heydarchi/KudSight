@@ -5,7 +5,7 @@ import re
 from analyzer.AbstractAnalyzer import *
 from analyzer.common.AnalyzerHelper import *
 from analyzer.cpp.CppVariableAnalyzer import *
-from PythonUtilityClasses import FileReader as FR
+from utils.FileReader import *
 
 
 class CppMethodAnalyzer(AbstractAnalyzer):
@@ -18,7 +18,7 @@ class CppMethodAnalyzer(AbstractAnalyzer):
         )
 
     def analyze(self, filePath, lang=None, classStr=None):
-        content = classStr if classStr else FR.FileReader().readFile(filePath)
+        content = classStr if classStr else FileReader().readFile(filePath)
         methods = []
         match = re.search(self.pattern, content)
         while match:

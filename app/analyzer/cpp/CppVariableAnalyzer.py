@@ -4,7 +4,7 @@ from pathlib import Path
 import re
 from analyzer.AbstractAnalyzer import *
 from model.AnalyzerEntities import *
-from PythonUtilityClasses import FileReader as FR
+from utils.FileReader import *
 
 
 class CppVariableAnalyzer(AbstractAnalyzer):
@@ -13,7 +13,7 @@ class CppVariableAnalyzer(AbstractAnalyzer):
 
     def analyze(self, filePath, lang=None, classStr=None):
         listOfVariables = []
-        content = classStr if classStr else FR.FileReader().readFile(filePath)
+        content = classStr if classStr else FileReader().readFile(filePath)
 
         match = re.search(self.pattern, content, flags=re.MULTILINE | re.DOTALL)
         while match:

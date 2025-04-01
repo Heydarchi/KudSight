@@ -5,7 +5,7 @@ from analyzer.kotlin.KotlinMethodAnalyzer import *
 from analyzer.kotlin.KotlinVariableAnalyzer import *
 from analyzer.common.AnalyzerHelper import *
 from analyzer.common.CommentAnalyzer import *
-from PythonUtilityClasses import FileReader as FR
+from utils.FileReader import *
 
 
 class KotlinClassAnalyzer(AbstractAnalyzer):
@@ -32,7 +32,7 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
 
     def analyze(self, filePath, lang=None, inputStr=None):
         if inputStr == None:
-            fileReader = FR.FileReader()
+            fileReader = FileReader()
             commentAnalyzer = CommentAnalyzer()
             fileContent = commentAnalyzer.analyze(filePath, FileTypeEnum.KOTLIN)
         else:

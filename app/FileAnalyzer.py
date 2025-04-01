@@ -6,7 +6,7 @@ from analyzer.cpp.CppClassAnalyzer import CppClassAnalyzer
 from analyzer.kotlin.KotlinClassAnalyzer import KotlinClassAnalyzer
 from analyzer.csharp.CSharpClassAnalyzer import CSharpClassAnalyzer
 from model.AnalyzerEntities import FileTypeEnum
-from PythonUtilityClasses import SystemUtility as SU
+from utils.SystemUtility import *
 from drawer.DataGenerator import DataGenerator
 from analyzer.AbstractAnalyzer import AbstractAnalyzer
 
@@ -17,7 +17,7 @@ class FileAnalyzer(AbstractAnalyzer):
             os.makedirs("static/out")
 
     def analyze(self, targetPath, pattern=None):
-        systemUtility = SU.SystemUtility()
+        systemUtility = SystemUtility()
         listOfFiles = systemUtility.get_list_of_files(targetPath, "*")
         print(listOfFiles)
 
