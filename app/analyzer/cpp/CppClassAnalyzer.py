@@ -117,7 +117,7 @@ class CppClassAnalyzer(AbstractAnalyzer):
 
                 tempContent = tempContent[match.end() + classBoundary :]
                 match = re.search(pattern, tempContent)
-        print(listOfClasses)
+
         return listOfClasses
 
     def find_class_pattern(self, pattern, inputStr):

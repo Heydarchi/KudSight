@@ -50,7 +50,7 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
 
             match = self.find_class_pattern(pattern, tempContent)
             while match != None:
-                print("\n**********  Found class definition **********\n")
+                # print("\n**********  Found class definition **********\n")
                 classInfo = ClassNode()
                 """print(
                     "-------Match at begin % s, end % s "
@@ -64,11 +64,11 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
                 classInfo.name = self.extract_class_name(
                     tempContent[match.start() : match.end()]
                 )
-                # print("====> Class/Interface name: ",classInfo.name)
+
                 classInfo.relations = self.extract_class_inheritances(
                     tempContent[match.start() : match.end()]
                 )
-                # print("====> classInfo.relations: ", classInfo.relations)
+
                 classInfo = self.extract_class_spec(
                     tempContent[match.start() : match.end()], classInfo
                 )
@@ -77,7 +77,6 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
                     tempContent[match.start() :]
                 )
 
-                ### Find the variables & methods within the class's boundary
                 methods = KotlinMethodAnalyzer().analyze(
                     None,
                     lang,
@@ -100,10 +99,6 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
 
                 classInfo.variables.extend(variables)
 
-                print("Class found:", classInfo.name)
-                print("Methods:", [m.name for m in classInfo.methods])
-                print("Variables:", [v.name for v in classInfo.variables])
-
                 classAnalyzer = KotlinClassAnalyzer()
 
                 classInfo.classes = classAnalyzer.analyze(
@@ -116,7 +111,6 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
 
                 tempContent = tempContent[match.end() + classBoundary :]
                 match = re.search(pattern, tempContent)
-        print(listOfClasses)
         return listOfClasses
 
     def find_class_pattern(self, pattern, inputStr):
@@ -151,7 +145,6 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
                     )
                 )
 
-        print("Class inheritance list:", inheritance_list)
         return inheritance_list
 
     def extract_class_spec(self, inputStr: str, classInfo: ClassNode):

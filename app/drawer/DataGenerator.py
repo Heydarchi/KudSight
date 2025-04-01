@@ -9,25 +9,6 @@ from datetime import datetime
 class DataGenerator:
     def __init__(self) -> None:
         self.graphData = GraphData()
-        self.mapList = list()
-        self.mapList.append(UmlRelationMap("", InheritanceEnum.DEPENDED))
-        self.mapList.append(UmlRelationMap("", InheritanceEnum.EXTENDED))
-        self.mapList.append(UmlRelationMap("", InheritanceEnum.IMPLEMENTED))
-
-        self.dataTypeToIgnore = [
-            "boolean",
-            "byte",
-            "char",
-            "short",
-            "int",
-            "long",
-            "float",
-            "double",
-            "void",
-            "Int",
-            "return",
-            "var",
-        ]
 
     def generateData(self, listOfClassNodes: list[ClassNode]):
         dataList = list()
