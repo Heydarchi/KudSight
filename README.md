@@ -99,6 +99,12 @@ I have provide a docker image including the latest version of the application th
 - Create an out folder in the directory you want to run the docker to store the analysis result. (Mandatory)
 - You can mount other folder, drivers and disks if you like. But the first part "$PWD/out:/app/static/out" should be kept.
 
+Pull the image:
+```bash
+docker pull mhheydarchi/kudsight:latest
+```
+
+Run it:
 ```bash
 docker run -it --rm --network host -v "$PWD/out:/app/static/out" -v "$HOME:/home/$USER" -v "/media:/media" -p 5000:5000  mhheydarchi/kudsight:latest
 ```
