@@ -207,7 +207,39 @@ class CSharpClassAnalyzer(AbstractAnalyzer):
             "object",
         }
 
-        return [rel for rel in relations if rel.name not in primitives]
+        # Common C# modifiers/keywords that might prefix type declarations
+        modifiers = {
+            "public",
+            "private",
+            "protected",
+            "internal",
+            "static",
+            "readonly",
+            "const",
+            "volatile",
+            "abstract",
+            "virtual",
+            "sealed",
+            "unsafe",
+            "new",
+        }
+
+        def clean_type(name: str) -> list[str]:
+            # Remove generic type arguments like <T>, <string, object>
+            name = re.sub(r"<.*?>", "", name)
+            # Remove array/pointer symbols
+            name = name.replace("[]", " ").replace("*", " ")
+            # Tokenize and remove known modifiers
+            parts = [
+                p.strip() for p in name.split() if p.strip() and p not in modifiers
+            ]
+            return parts
+
+        def is_primitive(name: str) -> bool:
+            cleaned = clean_type(name)
+            return any(part in primitives for part in cleaned)
+
+        return [rel for rel in relations if not is_primitive(rel.name)]
 
 
 if __name__ == "__main__":

@@ -220,7 +220,35 @@ class JavaClassAnalyzer(AbstractAnalyzer):
             "Object",
         }
 
-        return [rel for rel in relations if rel.name not in primitives]
+        # Java modifiers to remove before matching
+        modifiers = {
+            "public",
+            "protected",
+            "private",
+            "static",
+            "final",
+            "abstract",
+            "synchronized",
+            "volatile",
+            "transient",
+        }
+
+        def clean_type(name: str) -> list[str]:
+            # Remove generic parts like <T>, <String, Integer>
+            name = re.sub(r"<.*?>", "", name)
+            # Remove array brackets, parentheses, etc.
+            name = name.replace("[]", " ").replace("()", " ").replace("...", " ")
+            # Tokenize by space and strip modifiers
+            parts = [
+                p.strip() for p in name.split() if p.strip() and p not in modifiers
+            ]
+            return parts
+
+        def is_primitive(name: str) -> bool:
+            cleaned = clean_type(name)
+            return any(part in primitives for part in cleaned)
+
+        return [rel for rel in relations if not is_primitive(rel.name)]
 
 
 if __name__ == "__main__":

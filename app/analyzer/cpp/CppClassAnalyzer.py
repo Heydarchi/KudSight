@@ -205,7 +205,7 @@ class CppClassAnalyzer(AbstractAnalyzer):
         return CppMethodAnalyzer().extractParams(inputStr)
 
     def remove_primitive_types(self, relations):
-        primitives = {
+        cpp_primitives = {
             "void",
             "bool",
             "char",
@@ -231,7 +231,38 @@ class CppClassAnalyzer(AbstractAnalyzer):
             "uint64_t",
         }
 
-        return [rel for rel in relations if rel.name not in primitives]
+        # C++ qualifiers and modifiers (prefix)
+        modifiers = {
+            "const",
+            "volatile",
+            "static",
+            "mutable",
+            "register",
+            "inline",
+            "extern",
+            "typename",
+            "using",
+        }
+
+        # C++ pointer/reference postfixes to remove
+        postfixes = {"*", "&", "&&"}
+
+        def clean_type(name: str) -> list[str]:
+            # Remove templates like std::vector<int>
+            name = re.sub(r"<.*?>", "", name)
+            # Split and clean parts
+            parts = name.replace("*", " * ").replace("&", " & ").split()
+            return [
+                p.strip()
+                for p in parts
+                if p and p not in modifiers and p not in postfixes
+            ]
+
+        def is_primitive(name: str) -> bool:
+            cleaned = clean_type(name)
+            return any(part in cpp_primitives for part in cleaned)
+
+        return [rel for rel in relations if not is_primitive(rel.name)]
 
 
 if __name__ == "__main__":

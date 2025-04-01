@@ -211,7 +211,7 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
     def extract_class_params(self, inputStr):
         return KotlinMethodAnalyzer().extractParams(inputStr)
 
-    def remove_primitive_types(self, relations):
+    def remove_kotlin_primitive_types(self, relations):
         primitives = {
             "Boolean",
             "Byte",
@@ -227,7 +227,36 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
             "Nothing",
         }
 
-        return [rel for rel in relations if rel.name not in primitives]
+        # Kotlin modifiers and keywords that might prefix a type
+        modifiers = {
+            "val",
+            "var",
+            "lateinit",
+            "const",
+            "open",
+            "override",
+            "private",
+            "public",
+            "protected",
+            "internal",
+        }
+
+        def clean_type(name: str) -> list[str]:
+            # Remove generic content like <T>, <String, Int>
+            name = re.sub(r"<.*?>", "", name)
+            # Remove Kotlin array types like Array<T>, IntArray, etc.
+            name = re.sub(r"\b\w+Array\b", "", name)
+            # Split by space and filter modifiers
+            parts = [
+                p.strip() for p in name.split() if p.strip() and p not in modifiers
+            ]
+            return parts
+
+        def is_primitive(name: str) -> bool:
+            cleaned = clean_type(name)
+            return any(part in primitives for part in cleaned)
+
+        return [rel for rel in relations if not is_primitive(rel.name)]
 
 
 if __name__ == "__main__":
