@@ -21,13 +21,7 @@ class CppClassAnalyzer(AbstractAnalyzer):
     def initPatterns(self):
 
         self.pattern = [
-            r"(template\s*<[^>]+>\s*)?"
-            r"(?:\s*(public|private|protected|static|final)\s+)*"
-            r"(class|struct)\s+"
-            r"[a-zA-Z_][a-zA-Z0-9_]*"
-            r"(?:\s+final)?"
-            r"(?:\s*:\s*[^({]+)?"
-            r"\s*[{;]"
+            r"(template\s*<[^>]+>\s*)?(?:\s*(public|private|protected|static|final)\s+)*(class|struct)\s+[a-zA-Z_][a-zA-Z0-9_]*(?:\s+final)?(?:\s*:\s*[^({]+)?\s*[{;]"
         ]
 
         self.classNamePattern = r"\b(class|struct)\s+([a-zA-Z_][a-zA-Z0-9_]*)"
@@ -53,17 +47,16 @@ class CppClassAnalyzer(AbstractAnalyzer):
         listOfClasses = list()
         for pattern in self.pattern:
             tempContent = fileContent
-            # print ("\nregx: ", pattern)
+            print("\nregx: ", pattern)
 
             match = self.find_class_pattern(pattern, tempContent)
             while match != None:
                 classInfo = ClassNode()
-                """print(
+                print(
                     "-------Match at begin % s, end % s "
                     % (match.start(), match.end()),
                     tempContent[match.start() : match.end()],
                 )
-                """
 
                 classInfo.package = package_name
 
@@ -106,17 +99,27 @@ class CppClassAnalyzer(AbstractAnalyzer):
 
                 classInfo.variables.extend(variables)
 
-                classAnalyzer = CppClassAnalyzer()
+                classInfo.relations.extend(
+                    self.extract_relation_from_methods_and_params(
+                        classInfo.methods, classInfo.params, classInfo.relations
+                    )
+                )
+
+                classInfo.relations = self.remove_primitive_types(classInfo.relations)
+
+                """classAnalyzer = CppClassAnalyzer()
                 classInfo.classes = classAnalyzer.analyze(
                     None,
                     lang,
                     inputStr=tempContent[match.end() : (match.end() + classBoundary)],
                 )
+                """
 
                 listOfClasses.append(classInfo)
 
                 tempContent = tempContent[match.end() + classBoundary :]
                 match = re.search(pattern, tempContent)
+
         print(listOfClasses)
         return listOfClasses
 
@@ -176,6 +179,90 @@ class CppClassAnalyzer(AbstractAnalyzer):
             # print("++++++++++++ extract_package_name:   ", inputStr[match.start() : match.end()].strip().split(" ")[1])
             return inputStr[match.start() : match.end()].strip().split(" ")[1]
         return None
+
+    def extract_relation_from_methods_and_params(self, methods, params, relations):
+        inheritance_list = list()
+        for method in methods:
+            for param in method.params:
+                if not any(relation.name == param for relation in relations):
+                    inheritance_list.append(
+                        Inheritance(
+                            name=param.strip(), relationship=InheritanceEnum.DEPENDED
+                        )
+                    )
+
+        for param in params:
+            if not any(relation.name == param for relation in relations):
+                inheritance_list.append(
+                    Inheritance(
+                        name=param.strip(), relationship=InheritanceEnum.DEPENDED
+                    )
+                )
+        # print("inheritance_list: ", inheritance_list)
+        return inheritance_list
+
+    def extract_class_params(self, inputStr):
+        return CppMethodAnalyzer().extractParams(inputStr)
+
+    def remove_primitive_types(self, relations):
+        cpp_primitives = {
+            "void",
+            "bool",
+            "char",
+            "wchar_t",
+            "char16_t",
+            "char32_t",
+            "short",
+            "int",
+            "long",
+            "float",
+            "double",
+            "signed",
+            "unsigned",
+            "size_t",
+            "ptrdiff_t",
+            "int8_t",
+            "int16_t",
+            "int32_t",
+            "int64_t",
+            "uint8_t",
+            "uint16_t",
+            "uint32_t",
+            "uint64_t",
+        }
+
+        # C++ qualifiers and modifiers (prefix)
+        modifiers = {
+            "const",
+            "volatile",
+            "static",
+            "mutable",
+            "register",
+            "inline",
+            "extern",
+            "typename",
+            "using",
+        }
+
+        # C++ pointer/reference postfixes to remove
+        postfixes = {"*", "&", "&&"}
+
+        def clean_type(name: str) -> list[str]:
+            # Remove templates like std::vector<int>
+            name = re.sub(r"<.*?>", "", name)
+            # Split and clean parts
+            parts = name.replace("*", " * ").replace("&", " & ").split()
+            return [
+                p.strip()
+                for p in parts
+                if p and p not in modifiers and p not in postfixes
+            ]
+
+        def is_primitive(name: str) -> bool:
+            cleaned = clean_type(name)
+            return any(part in cpp_primitives for part in cleaned)
+
+        return [rel for rel in relations if not is_primitive(rel.name)]
 
 
 if __name__ == "__main__":

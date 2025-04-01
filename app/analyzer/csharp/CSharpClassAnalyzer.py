@@ -94,6 +94,14 @@ class CSharpClassAnalyzer(AbstractAnalyzer):
                 )
                 classInfo.variables.extend(variables)
 
+                classInfo.relations.extend(
+                    self.extract_relation_from_methods_and_params(
+                        classInfo.methods, classInfo.params, classInfo.relations
+                    )
+                )
+
+                classInfo.relations = self.remove_primitive_types(classInfo.relations)
+
                 classAnalyzer = CSharpClassAnalyzer()
                 classInfo.classes = classAnalyzer.analyze(
                     None,
@@ -105,6 +113,7 @@ class CSharpClassAnalyzer(AbstractAnalyzer):
 
                 tempContent = tempContent[match.end() + classBoundary :]
                 match = re.search(pattern, tempContent)
+
         print(listOfClasses)
         return listOfClasses
 
@@ -153,6 +162,84 @@ class CSharpClassAnalyzer(AbstractAnalyzer):
             # print("++++++++++++ extract_package_name:   ", inputStr[match.start() : match.end()].strip().split(" ")[1])
             return inputStr[match.start() : match.end()].strip().split(" ")[1]
         return None
+
+    def extract_relation_from_methods_and_params(self, methods, params, relations):
+        inheritance_list = list()
+        for method in methods:
+            for param in method.params:
+                if not any(relation.name == param for relation in relations):
+                    inheritance_list.append(
+                        Inheritance(
+                            name=param.strip(), relationship=InheritanceEnum.DEPENDED
+                        )
+                    )
+
+        for param in params:
+            if not any(relation.name == param for relation in relations):
+                inheritance_list.append(
+                    Inheritance(
+                        name=param.strip(), relationship=InheritanceEnum.DEPENDED
+                    )
+                )
+        print("inheritance_list: ", inheritance_list)
+        return inheritance_list
+
+    def extract_class_params(self, inputStr):
+        return CSharpMethodAnalyzer().extractParams(inputStr)
+
+    def remove_primitive_types(self, relations):
+        primitives = {
+            "void",
+            "bool",
+            "byte",
+            "sbyte",
+            "char",
+            "decimal",
+            "double",
+            "float",
+            "int",
+            "uint",
+            "long",
+            "ulong",
+            "short",
+            "ushort",
+            "string",
+            "object",
+        }
+
+        # Common C# modifiers/keywords that might prefix type declarations
+        modifiers = {
+            "public",
+            "private",
+            "protected",
+            "internal",
+            "static",
+            "readonly",
+            "const",
+            "volatile",
+            "abstract",
+            "virtual",
+            "sealed",
+            "unsafe",
+            "new",
+        }
+
+        def clean_type(name: str) -> list[str]:
+            # Remove generic type arguments like <T>, <string, object>
+            name = re.sub(r"<.*?>", "", name)
+            # Remove array/pointer symbols
+            name = name.replace("[]", " ").replace("*", " ")
+            # Tokenize and remove known modifiers
+            parts = [
+                p.strip() for p in name.split() if p.strip() and p not in modifiers
+            ]
+            return parts
+
+        def is_primitive(name: str) -> bool:
+            cleaned = clean_type(name)
+            return any(part in primitives for part in cleaned)
+
+        return [rel for rel in relations if not is_primitive(rel.name)]
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ from analyzer.kotlin.KotlinVariableAnalyzer import *
 from analyzer.common.AnalyzerHelper import *
 from analyzer.common.CommentAnalyzer import *
 from utils.FileReader import *
+from model.AnalyzerEntities import Inheritance, InheritanceEnum
 
 
 class KotlinClassAnalyzer(AbstractAnalyzer):
@@ -20,15 +21,17 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
 
     def initPatterns(self):
 
-        self.pattern = [r"\b(class|interface)\s+\w+(\s*:\s*[^{\n]+)?\s*{"]
+        self.pattern = [
+            r"(?:\r|\n)?\s*(?:@[\w.]+\s*)*(?:open|data|sealed|enum|annotation)?\s*(class|interface|object)\s+([a-zA-Z0-9_]+)\s*(?:\((?:[^()]|\([^()]*\))*\))?\s*(?:\:\s*([^{]+))?\s*\{"
+        ]
 
-        self.classNamePattern = r"(class|interface)\s+([a-zA-Z0-9_]+)"
+        self.classNamePattern = r"(?:data|sealed|enum|annotation)?\s*(class|interface|object)\s+([a-zA-Z0-9_]+)"
 
         self.classImplementPattern = r":\s*[a-zA-Z0-9_.,\s]+"
 
         self.classExtendPattern = r":\s*[a-zA-Z0-9_.,\s]+"
 
-        self.patternPackageName = r"^\s*package\s+([a-zA-Z0-9_.]+)"
+        self.patternPackageName = r"^\s*package\s+([a-zA-Z0-9_.]+)\n"
 
     def analyze(self, filePath, lang=None, inputStr=None):
         if inputStr == None:
@@ -47,6 +50,7 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
 
             match = self.find_class_pattern(pattern, tempContent)
             while match != None:
+                # print("\n**********  Found class definition **********\n")
                 classInfo = ClassNode()
                 """print(
                     "-------Match at begin % s, end % s "
@@ -60,11 +64,15 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
                 classInfo.name = self.extract_class_name(
                     tempContent[match.start() : match.end()]
                 )
-                # print("====> Class/Interface name: ",classInfo.name)
+
                 classInfo.relations = self.extract_class_inheritances(
                     tempContent[match.start() : match.end()]
                 )
-                # print("====> classInfo.relations: ", classInfo.relations)
+
+                classInfo.params = self.extract_class_params(
+                    tempContent[match.start() : match.end()]
+                )
+
                 classInfo = self.extract_class_spec(
                     tempContent[match.start() : match.end()], classInfo
                 )
@@ -73,7 +81,6 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
                     tempContent[match.start() :]
                 )
 
-                ### Find the variables & methods within the class's boundary
                 methods = KotlinMethodAnalyzer().analyze(
                     None,
                     lang,
@@ -96,7 +103,16 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
 
                 classInfo.variables.extend(variables)
 
+                classInfo.relations.extend(
+                    self.extract_relation_from_methods_and_params(
+                        classInfo.methods, classInfo.params, classInfo.relations
+                    )
+                )
+
+                classInfo.relations = self.remove_primitive_types(classInfo.relations)
+
                 classAnalyzer = KotlinClassAnalyzer()
+
                 classInfo.classes = classAnalyzer.analyze(
                     None,
                     lang,
@@ -107,6 +123,7 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
 
                 tempContent = tempContent[match.end() + classBoundary :]
                 match = re.search(pattern, tempContent)
+
         print(listOfClasses)
         return listOfClasses
 
@@ -125,25 +142,39 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
         return None
 
     def extract_class_inheritances(self, inputStr):
-        inheritance = []
 
-        return inheritance
+        inheritance_str = inputStr[inputStr.find(")") + 1 : inputStr.find("{")]
+
+        raw_items = inheritance_str.replace(":", "").strip().split(")")
+
+        inheritance_list = list()
+
+        for item in raw_items:
+            super_class = item.strip().split("(")[0].strip()
+            if super_class:
+                inheritance_list.append(
+                    Inheritance(
+                        name=super_class,
+                        relationship=InheritanceEnum.IMPLEMENTED,
+                    )
+                )
+
+        return inheritance_list
 
     def extract_class_spec(self, inputStr: str, classInfo: ClassNode):
-        splittedStr = inputStr.split()
-        if "public" in splittedStr:
-            classInfo.accessLevel = AccessEnum.PUBLIC
-        elif "protected" in splittedStr:
-            classInfo.accessLevel = AccessEnum.PROTECTED
-        else:
-            classInfo.accessLevel = AccessEnum.PRIVATE
-
-        if "final" in splittedStr:
-            classInfo.isFinal = True
-
-        if "interface" in splittedStr:
+        lowered = inputStr.lower()
+        if "interface" in lowered:
             classInfo.isInterface = True
-
+        elif "enum class" in lowered:
+            classInfo.isEnum = True
+        elif "data class" in lowered:
+            classInfo.isData = True
+        elif "sealed class" in lowered:
+            classInfo.isSealed = True
+        elif "annotation class" in lowered:
+            classInfo.isAnnotation = True
+        elif "object" in lowered:
+            classInfo.isObject = True
         return classInfo
 
     def extract_package_name(self, inputStr: str):
@@ -155,6 +186,77 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
             # print("++++++++++++ extract_package_name:   ", inputStr[match.start() : match.end()].strip().split(" ")[1])
             return inputStr[match.start() : match.end()].strip().split(" ")[1]
         return None
+
+    def extract_relation_from_methods_and_params(self, methods, params, relations):
+        inheritance_list = list()
+        for method in methods:
+            for param in method.params:
+                if not any(relation.name == param for relation in relations):
+                    inheritance_list.append(
+                        Inheritance(
+                            name=param.strip(), relationship=InheritanceEnum.DEPENDED
+                        )
+                    )
+
+        for param in params:
+            if not any(relation.name == param for relation in relations):
+                inheritance_list.append(
+                    Inheritance(
+                        name=param.strip(), relationship=InheritanceEnum.DEPENDED
+                    )
+                )
+        print("inheritance_list: ", inheritance_list)
+        return inheritance_list
+
+    def extract_class_params(self, inputStr):
+        return KotlinMethodAnalyzer().extractParams(inputStr)
+
+    def remove_kotlin_primitive_types(self, relations):
+        primitives = {
+            "Boolean",
+            "Byte",
+            "Char",
+            "Short",
+            "Int",
+            "Long",
+            "Float",
+            "Double",
+            "String",
+            "Unit",
+            "Any",
+            "Nothing",
+        }
+
+        # Kotlin modifiers and keywords that might prefix a type
+        modifiers = {
+            "val",
+            "var",
+            "lateinit",
+            "const",
+            "open",
+            "override",
+            "private",
+            "public",
+            "protected",
+            "internal",
+        }
+
+        def clean_type(name: str) -> list[str]:
+            # Remove generic content like <T>, <String, Int>
+            name = re.sub(r"<.*?>", "", name)
+            # Remove Kotlin array types like Array<T>, IntArray, etc.
+            name = re.sub(r"\b\w+Array\b", "", name)
+            # Split by space and filter modifiers
+            parts = [
+                p.strip() for p in name.split() if p.strip() and p not in modifiers
+            ]
+            return parts
+
+        def is_primitive(name: str) -> bool:
+            cleaned = clean_type(name)
+            return any(part in primitives for part in cleaned)
+
+        return [rel for rel in relations if not is_primitive(rel.name)]
 
 
 if __name__ == "__main__":

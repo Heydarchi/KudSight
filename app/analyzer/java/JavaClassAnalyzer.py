@@ -88,6 +88,14 @@ class JavaClassAnalyzer(AbstractAnalyzer):
 
                 classInfo.variables.extend(variables)
 
+                classInfo.relations.extend(
+                    self.extract_relation_from_methods_and_params(
+                        classInfo.methods, classInfo.params, classInfo.relations
+                    )
+                )
+
+                classInfo.relations = self.remove_primitive_types(classInfo.relations)
+
                 classAnalyzer = JavaClassAnalyzer()
                 classInfo.classes = classAnalyzer.analyze(
                     None,
@@ -99,6 +107,7 @@ class JavaClassAnalyzer(AbstractAnalyzer):
 
                 tempContent = tempContent[match.end() + classBoundary :]
                 match = re.search(pattern, tempContent)
+
         print(listOfClasses)
         return listOfClasses
 
@@ -171,6 +180,75 @@ class JavaClassAnalyzer(AbstractAnalyzer):
         if match != None:
             return inputStr[match.start() : match.end()].strip().split(" ")[1]
         return None
+
+    def extract_relation_from_methods_and_params(self, methods, params, relations):
+        inheritance_list = list()
+        for method in methods:
+            for param in method.params:
+                if not any(relation.name == param for relation in relations):
+                    inheritance_list.append(
+                        Inheritance(
+                            name=param.strip(), relationship=InheritanceEnum.DEPENDED
+                        )
+                    )
+
+        for param in params:
+            if not any(relation.name == param for relation in relations):
+                inheritance_list.append(
+                    Inheritance(
+                        name=param.strip(), relationship=InheritanceEnum.DEPENDED
+                    )
+                )
+        print("inheritance_list: ", inheritance_list)
+        return inheritance_list
+
+    def extract_class_params(self, inputStr):
+        return JavaMethodAnalyzer().extractParams(inputStr)
+
+    def remove_primitive_types(self, relations):
+        primitives = {
+            "void",
+            "boolean",
+            "byte",
+            "char",
+            "short",
+            "int",
+            "long",
+            "float",
+            "double",
+            "String",
+            "Object",
+        }
+
+        # Java modifiers to remove before matching
+        modifiers = {
+            "public",
+            "protected",
+            "private",
+            "static",
+            "final",
+            "abstract",
+            "synchronized",
+            "volatile",
+            "transient",
+        }
+
+        def clean_type(name: str) -> list[str]:
+            # Remove generic parts like <T>, <String, Integer>
+            name = re.sub(r"<.*?>", "", name)
+            # Remove array brackets, parentheses, etc.
+            name = name.replace("[]", " ").replace("()", " ").replace("...", " ")
+            # Tokenize by space and strip modifiers
+            parts = [
+                p.strip() for p in name.split() if p.strip() and p not in modifiers
+            ]
+            return parts
+
+        def is_primitive(name: str) -> bool:
+            cleaned = clean_type(name)
+            return any(part in primitives for part in cleaned)
+
+        return [rel for rel in relations if not is_primitive(rel.name)]
 
 
 if __name__ == "__main__":

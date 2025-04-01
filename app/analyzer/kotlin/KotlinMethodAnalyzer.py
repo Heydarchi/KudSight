@@ -17,7 +17,7 @@ class KotlinMethodAnalyzer(AbstractAnalyzer):
         methods = []
         match = re.search(self.pattern, content)
         while match:
-            methodInfo = self.extractMethodInfo(match.groups())
+            methodInfo = self.extractMethodInfo(match.group(0))
             boundary = AnalyzerHelper().findMethodBoundary(content[match.start() :])
             methodInfo.variables = KotlinVariableAnalyzer().analyze(
                 None, None, content[match.start() : match.end() + boundary]
@@ -27,14 +27,45 @@ class KotlinMethodAnalyzer(AbstractAnalyzer):
             match = re.search(self.pattern, content)
         return methods
 
-    def extractMethodInfo(self, matchGroups):
+    def extractMethodInfo(self, inputString):
+
+        inputString = inputString.replace("{", "").replace("fun", "").strip()
+
+        method_strs = inputString.split("(")
         methodInfo = MethodNode()
-        methodInfo.name = matchGroups[0]
+        methodInfo.name = method_strs[0]
+
+        return_type_str = inputString[inputString.find(")") + 1 :].strip().split(":")
+
         methodInfo.dataType = (
-            matchGroups[1].replace(":", "").strip() if matchGroups[1] else None
+            return_type_str[1].strip() if len(return_type_str) > 1 else None
         )
-        methodInfo.accessLevel = AccessEnum.PRIVATE  # Kotlin uses keywords on top-level
+
+        methodInfo.accessLevel = AccessEnum.PRIVATE
+
+        methodInfo.params = self.extractParams(inputString)
+
         return methodInfo
+
+    def extractParams(self, inputStr):
+        paramList = list()
+        params_str = (
+            inputStr[inputStr.find("(") + 1 : inputStr.find(")")].strip().split(",")
+        )
+
+        for item in params_str:
+            param_items = item.strip().split(":")
+
+            param_type = ""
+            if len(param_items) > 2:
+                param_type = param_items[1].strip() + " " + param_items[2].strip()
+            elif len(param_items) == 2:
+                param_type = param_items[1].strip()
+
+            if param_type.strip():
+                paramList.append(param_type)
+
+        return paramList
 
 
 if __name__ == "__main__":
