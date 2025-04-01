@@ -6,6 +6,7 @@ from analyzer.kotlin.KotlinVariableAnalyzer import *
 from analyzer.common.AnalyzerHelper import *
 from analyzer.common.CommentAnalyzer import *
 from utils.FileReader import *
+from model.AnalyzerEntities import Inheritance, InheritanceEnum
 
 
 class KotlinClassAnalyzer(AbstractAnalyzer):
@@ -20,15 +21,17 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
 
     def initPatterns(self):
 
-        self.pattern = [r"\b(class|interface)\s+\w+(\s*:\s*[^{\n]+)?\s*{"]
+        self.pattern = [
+            r"(?:\r|\n)?\s*(?:@[\w.]+\s*)*(?:open|data|sealed|enum|annotation)?\s*(class|interface|object)\s+([a-zA-Z0-9_]+)\s*(?:\((?:[^()]|\([^()]*\))*\))?\s*(?:\:\s*([^{]+))?\s*\{"
+        ]
 
-        self.classNamePattern = r"(class|interface)\s+([a-zA-Z0-9_]+)"
+        self.classNamePattern = r"(?:data|sealed|enum|annotation)?\s*(class|interface|object)\s+([a-zA-Z0-9_]+)"
 
         self.classImplementPattern = r":\s*[a-zA-Z0-9_.,\s]+"
 
         self.classExtendPattern = r":\s*[a-zA-Z0-9_.,\s]+"
 
-        self.patternPackageName = r"^\s*package\s+([a-zA-Z0-9_.]+)"
+        self.patternPackageName = r"^\s*package\s+([a-zA-Z0-9_.]+)\n"
 
     def analyze(self, filePath, lang=None, inputStr=None):
         if inputStr == None:
@@ -47,6 +50,7 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
 
             match = self.find_class_pattern(pattern, tempContent)
             while match != None:
+                print("\n**********  Found class definition **********\n")
                 classInfo = ClassNode()
                 """print(
                     "-------Match at begin % s, end % s "
@@ -96,7 +100,12 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
 
                 classInfo.variables.extend(variables)
 
+                print("Class found:", classInfo.name)
+                print("Methods:", [m.name for m in classInfo.methods])
+                print("Variables:", [v.name for v in classInfo.variables])
+
                 classAnalyzer = KotlinClassAnalyzer()
+
                 classInfo.classes = classAnalyzer.analyze(
                     None,
                     lang,
@@ -125,25 +134,40 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
         return None
 
     def extract_class_inheritances(self, inputStr):
-        inheritance = []
 
-        return inheritance
+        inheritance_str = inputStr[inputStr.find(")") + 1 : inputStr.find("{")]
+
+        raw_items = inheritance_str.replace(":", "").strip().split(")")
+
+        inheritance_list = list()
+
+        for item in raw_items:
+            super_class = item.strip().split("(")[0].strip()
+            if super_class:
+                inheritance_list.append(
+                    Inheritance(
+                        name=super_class,
+                        relationship=InheritanceEnum.IMPLEMENTED,
+                    )
+                )
+
+        print("Class inheritance list:", inheritance_list)
+        return inheritance_list
 
     def extract_class_spec(self, inputStr: str, classInfo: ClassNode):
-        splittedStr = inputStr.split()
-        if "public" in splittedStr:
-            classInfo.accessLevel = AccessEnum.PUBLIC
-        elif "protected" in splittedStr:
-            classInfo.accessLevel = AccessEnum.PROTECTED
-        else:
-            classInfo.accessLevel = AccessEnum.PRIVATE
-
-        if "final" in splittedStr:
-            classInfo.isFinal = True
-
-        if "interface" in splittedStr:
+        lowered = inputStr.lower()
+        if "interface" in lowered:
             classInfo.isInterface = True
-
+        elif "enum class" in lowered:
+            classInfo.isEnum = True
+        elif "data class" in lowered:
+            classInfo.isData = True
+        elif "sealed class" in lowered:
+            classInfo.isSealed = True
+        elif "annotation class" in lowered:
+            classInfo.isAnnotation = True
+        elif "object" in lowered:
+            classInfo.isObject = True
         return classInfo
 
     def extract_package_name(self, inputStr: str):
