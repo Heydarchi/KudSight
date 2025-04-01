@@ -6,8 +6,13 @@
 
 namespace MyCompany::Core {
 
+    class SuperBase{
+    public:
+        SuperBase(){}
+    }
+
     // Base class
-    class Base {
+    class Base: public SuperBase {
     public:
         virtual void initialize() = 0;
         int baseId;

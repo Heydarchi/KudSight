@@ -59,6 +59,7 @@ class ClassNode:
     methods: List[MethodNode] = field(default_factory=list)
     relations: List[Inheritance] = field(default_factory=list)
     classes: List["ClassNode"] = field(default_factory=list)
+    params: List[str] = field(default_factory=list)
 
 
 class FileTypeEnum(Enum):
