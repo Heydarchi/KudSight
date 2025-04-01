@@ -29,6 +29,7 @@ class MethodNode:
     name: str = ""
     dataType: str = ""
     accessLevel: AccessEnum = AccessEnum.PUBLIC
+    params: List[str] = field(default_factory=list)
     isStatic: bool = False
     isOverridden: bool = False
     variables: List[VariableNode] = field(default_factory=list)

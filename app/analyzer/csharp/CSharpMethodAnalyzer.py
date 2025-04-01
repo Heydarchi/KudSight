@@ -53,7 +53,31 @@ class CSharpMethodAnalyzer(AbstractAnalyzer):
         else:
             methodInfo.name = "unknown"
             methodInfo.dataType = None
+
+        methodInfo.params = self.extractParams(inputString)
+
         return methodInfo
+
+    def extractParams(self, inputStr):
+        paramList = list()
+        params_str = (
+            inputStr[inputStr.find("(") + 1 : inputStr.find(")")].strip().split(",")
+        )
+
+        for item in params_str:
+            param_items = item.strip().split(" ")
+
+            param_type = ""
+            if len(param_items) > 2:
+                param_type = param_items[0].strip() + " " + param_items[1].strip()
+            elif len(param_items) == 2:
+                param_type = param_items[0].strip()
+
+            if param_type.strip():
+                paramList.append(param_type)
+
+        print(paramList)
+        return paramList
 
 
 if __name__ == "__main__":
