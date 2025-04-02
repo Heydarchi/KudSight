@@ -211,7 +211,7 @@ class KotlinClassAnalyzer(AbstractAnalyzer):
     def extract_class_params(self, inputStr):
         return KotlinMethodAnalyzer().extractParams(inputStr)
 
-    def remove_kotlin_primitive_types(self, relations):
+    def remove_primitive_types(self, relations):
         primitives = {
             "Boolean",
             "Byte",
