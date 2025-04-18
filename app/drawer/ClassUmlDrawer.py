@@ -39,12 +39,10 @@ class ClassUmlDrawer:
         if file_type == FileTypeEnum.UNDEFINED:
             print("Warning: Undefined file type, cannot load keywords.")
             return []
-
         try:
             current_script_dir = Path(__file__).resolve().parent
             app_dir = current_script_dir.parent
             data_dir = app_dir.parent / "data"
-
             if not data_dir.exists():
                 print(f"Warning: Calculated data directory does not exist: {data_dir}")
                 data_dir = Path("data")
@@ -53,28 +51,23 @@ class ClassUmlDrawer:
                         f"Warning: Fallback data directory does not exist: {data_dir.resolve()}"
                     )
                     return []
-
             file_name = f"{file_type.name}.txt"
             file_path = data_dir / file_name
-
         except Exception as e:
             print(f"Error calculating keyword file path: {e}")
             return []
 
         print(f"Attempting to load keywords from: {file_path.resolve()}")
-
         keywords = []
         if not file_path.is_file():
             print(f"Warning: Keyword file not found at {file_path.resolve()}")
             return []
-
         try:
             with open(file_path, "r") as f:
                 keywords = [line.strip() for line in f if line.strip()]
                 print(f"Loaded {len(keywords)} keywords from {file_path.resolve()}")
         except Exception as e:
             print(f"Error loading keywords from {file_path.resolve()}: {e}")
-
         return keywords
 
     def _get_type_cleaner(self):
@@ -99,12 +92,10 @@ class ClassUmlDrawer:
             name = re.sub(r"\s*=[^,]+", "", name)
             for post in postfixes:
                 name = name.replace(post, " ")
-
             parts = name.split()
             core_parts = [p for p in parts if p and p not in modifiers]
             if not core_parts:
                 return ""
-
             cleaned_name = " ".join(core_parts)
             for ns in namespaces_to_strip:
                 if cleaned_name.startswith(ns):
@@ -126,7 +117,6 @@ class ClassUmlDrawer:
         plantUmlList.append("@startuml")
         plantUmlList.append("hide empty members")
         plantUmlList.append("skinparam classAttributeIconSize 0")
-
         simple_name = (
             classInfo.name.split("::")[-1] if "::" in classInfo.name else classInfo.name
         )
@@ -135,7 +125,6 @@ class ClassUmlDrawer:
 
         plantUmlList.extend(self.dump_single_class_definition(temp_node_for_dump))
         plantUmlList.extend(self.dump_relations_for_class(classInfo, {}, {}))
-
         plantUmlList.append("@enduml")
         plantUmlList = list(dict.fromkeys(plantUmlList))
         filePath = (
@@ -150,54 +139,34 @@ class ClassUmlDrawer:
         if not listOfClassNodes:
             print("No class nodes provided for consolidated UML.")
             return
-
         plantUmlList = ["@startuml"]
         plantUmlList.append("' Consolidated UML Diagram")
         plantUmlList.append("hide empty members")
         plantUmlList.append("skinparam classAttributeIconSize 0")
         plantUmlList.append("skinparam packageStyle rectangle")
-
         packages = defaultdict(list)
         qualified_name_map: Dict[str, ClassNode] = {}
         simple_name_map: Dict[str, List[str]] = {}
-
         for node in listOfClassNodes:
             qualified_name = self._get_qualified_name(node)
             if qualified_name:
                 qualified_name_map[qualified_name] = node
-
                 simple_name = node.name
                 if simple_name:
                     if simple_name not in simple_name_map:
                         simple_name_map[simple_name] = []
                     simple_name_map[simple_name].append(qualified_name)
-
         for node in listOfClassNodes:
             package_name = (
                 node.package.replace("::", ".") if node.package else "default"
             )
             packages[package_name].append(node)
-
         for package_name, classes_in_package in sorted(packages.items()):
             if package_name != "default":
                 plantUmlList.append(f"package {package_name} {{")
-
-            classes_in_package.sort(
-                key=lambda x: x.name.split("::")[-1] if "::" in x.name else x.name
-            )
-
+            classes_in_package.sort(key=lambda x: self._get_qualified_name(x))
             for classInfo in classes_in_package:
-                simple_name = (
-                    classInfo.name.split("::")[-1]
-                    if "::" in classInfo.name
-                    else classInfo.name
-                )
-                temp_node_for_dump = ClassNode(**vars(classInfo))
-                temp_node_for_dump.name = simple_name
-                plantUmlList.extend(
-                    self.dump_single_class_definition(temp_node_for_dump)
-                )
-
+                plantUmlList.extend(self.dump_single_class_definition(classInfo))
             if package_name != "default":
                 plantUmlList.append("}")
             plantUmlList.append("")
@@ -237,7 +206,6 @@ class ClassUmlDrawer:
         if not isinstance(name_str, str):
             return ""
         name_str = name_str.strip()  # Ensure no leading/trailing spaces
-
         # If it already has a namespace separator, assume it's qualified (or std::)
         if "::" in name_str:
             # Special case: Strip std:: prefix for consistency if present
@@ -254,7 +222,6 @@ class ClassUmlDrawer:
 
         if cleaned_name_for_check in self.dataTypeToIgnore or is_likely_template_param:
             return name_str  # Return as is, don't prepend package
-
         # If no namespace, not common/template, and we have a current package context, prepend it
         elif current_package:
             return f"{current_package}::{name_str}"
@@ -265,9 +232,8 @@ class ClassUmlDrawer:
     def dump_single_class_definition(self, classInfo: ClassNode) -> list[str]:
         definition = []
         class_type = "interface" if classInfo.isInterface else "class"
-        name = self._quote_if_needed(classInfo.name)
-        if classInfo.params:
-            name = f'"{classInfo.name}<{", ".join(classInfo.params)}>"'
+        qualified_name = self._get_qualified_name(classInfo)
+        name = self._quote_if_needed(qualified_name)
 
         stereotype_parts = []
         if classInfo.isAbstract:
@@ -275,7 +241,6 @@ class ClassUmlDrawer:
         if classInfo.isFinal:
             stereotype_parts.append("final")
         stereotype = f"<< { ' '.join(stereotype_parts) } >>" if stereotype_parts else ""
-
         definition.append(f"{class_type} {name} {stereotype} {{")
 
         for var in sorted(classInfo.variables, key=lambda x: x.name):
@@ -306,11 +271,9 @@ class ClassUmlDrawer:
                 return_type_display = ""
             else:
                 return_type_display = f": {return_type}"
-
             definition.append(
                 f"  {access} {static_override} {method_name_display}({params_str}){return_type_display}"
             )
-
         definition.append("}")
         return definition
 
@@ -324,14 +287,11 @@ class ClassUmlDrawer:
         source_name_qualified = self._quote_if_needed(
             self._get_qualified_name(classInfo)
         )
-
         processed_targets = set()
-
         for relation in classInfo.relations:
             try:
                 target_name_original = relation.name
                 target_name_full = target_name_original
-
                 is_inheritance = relation.relationship in [
                     InheritanceEnum.EXTENDED,
                     InheritanceEnum.IMPLEMENTED,
@@ -358,7 +318,6 @@ class ClassUmlDrawer:
                         arrow = "..|>"
                     elif relation.relationship == InheritanceEnum.EXTENDED:
                         arrow = "--|>"
-
                     if arrow:
                         resolved_target_quoted = self._quote_if_needed(resolved_target)
                         link_tuple = (
