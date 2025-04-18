@@ -1,6 +1,9 @@
 import json
 from typing import List, Optional
-from dataclasses import dataclass, field, asdict
+
+# Add FileTypeEnum import
+from model.AnalyzerEntities import FileTypeEnum
+from dataclasses import dataclass, field, asdict, fields
 
 
 @dataclass
@@ -39,45 +42,44 @@ class GraphData:
     nodes: List = field(default_factory=list)
     links: List = field(default_factory=list)
     analysisSourcePath: Optional[str] = None
+    # Add language context storage
+    _language_context: FileTypeEnum = field(
+        default=FileTypeEnum.UNDEFINED, compare=False, repr=False
+    )
 
     def _normalize_id(self, node_id: str) -> str:
         """Return the ID as is. Assumes IDs are consistently generated qualified names."""
         return node_id if isinstance(node_id, str) else ""
 
+    # Modify add_blank_classes to use the stored language context
     def add_blank_classes(self):
-        # Use raw IDs (qualified names) for checking
-        defined_nodes = {node.id for node in self.nodes}
+        defined_nodes_raw = {node.id for node in self.nodes}
         referenced_nodes = {link.source for link in self.links}.union(
             {link.target for link in self.links}
         )
+        undefined_nodes = referenced_nodes - defined_nodes_raw
 
-        undefined_nodes = referenced_nodes - defined_nodes
-        # Normalize IDs before comparison # This comment seems misplaced from previous logic, but harmless
-        defined_nodes = {
-            self._normalize_id(node.id) for node in self.nodes
-        }  # This re-calculates defined_nodes using normalized ID, which contradicts the goal of using raw IDs. Let's fix this too.
-        # --- Start Change: Use raw IDs for checking existence ---
-        defined_nodes_raw = {
-            node.id for node in self.nodes
-        }  # Use raw IDs for the check
-        # --- End Change ---
+        # Determine separator based on stored language context
+        separator = "." if self._language_context == FileTypeEnum.JAVA else "::"
+
         for undefined_node_id in undefined_nodes:
-            # --- Start Change: Check against raw defined IDs ---
-            if (
-                undefined_node_id and undefined_node_id not in defined_nodes_raw
-            ):  # Check against raw IDs
-                # --- End Change ---
-                # Extract package and simple ID heuristically if possible, otherwise leave package blank
+            if undefined_node_id and undefined_node_id not in defined_nodes_raw:
                 package_guess = ""
                 simple_id_guess = undefined_node_id
-                if "::" in undefined_node_id:
-                    parts = undefined_node_id.split("::")
-                    package_guess = "::".join(parts[:-1])
-                    simple_id_guess = parts[-1]
+
+                # Attempt package extraction only if the expected separator is present
+                if separator in undefined_node_id:
+                    parts = undefined_node_id.rsplit(
+                        separator, 1
+                    )  # Split only once from the right
+                    if len(parts) == 2:
+                        package_guess = parts[0]
+                        simple_id_guess = parts[1]
+                    # else: it contains the separator but not in a way that suggests a package (e.g., starts with it?)
 
                 blank_node = ClassData(
-                    id=undefined_node_id,  # Use the qualified name as the ID
-                    package=package_guess,  # Best guess for package
+                    id=undefined_node_id,
+                    package=package_guess,  # Use the guessed package
                     attributes=[],
                     methods=[],
                     linesOfCode=None,
@@ -112,7 +114,16 @@ class GraphData:
         self.links = filtered_links
 
     def to_json(self) -> str:
-        # Sort using raw ID
+        # Sort nodes and links before converting to dict
         self.nodes.sort(key=lambda x: x.id)
         self.links.sort(key=lambda x: (x.source, x.target, x.relation))
-        return json.dumps(asdict(self), indent=4)
+
+        # Convert the entire dataclass instance (including nested ones) to a dictionary
+        data_dict = asdict(self)
+
+        # Remove the internal _language_context field from the top-level dictionary
+        if "_language_context" in data_dict:
+            del data_dict["_language_context"]
+
+        # Now serialize the dictionary which contains only JSON-compatible types
+        return json.dumps(data_dict, indent=4)

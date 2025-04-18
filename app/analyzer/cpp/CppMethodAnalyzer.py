@@ -134,28 +134,34 @@ class CppMethodAnalyzer(AbstractAnalyzer):
             "public:",
             "private:",
             "protected:",
+            "typename",
         }
-        cleaned_group1 = return_type_or_ctor_dtor
-        for kw in type_keywords_to_remove:
-            cleaned_group1 = cleaned_group1.replace(kw, "").strip()
+        cleaned_group1_parts = []
+        pointer_ref = ""
+        for part in return_type_or_ctor_dtor.split():
+            if part in type_keywords_to_remove:
+                continue
+            cleaned_part = part
+            temp_ptr_ref = ""
+            while cleaned_part.endswith("*") or cleaned_part.endswith("&"):
+                temp_ptr_ref = cleaned_part[-1] + temp_ptr_ref
+                cleaned_part = cleaned_part[:-1]
+            if cleaned_part:
+                cleaned_group1_parts.append(cleaned_part)
+            if temp_ptr_ref:
+                pointer_ref = temp_ptr_ref
+
+        cleaned_group1 = " ".join(cleaned_group1_parts) + pointer_ref
 
         is_destructor = method_name.startswith("~")
         is_constructor = False
         if not is_destructor:
-            if (
-                cleaned_group1
-                and cleaned_group1.split("<")[0] == method_name.split("<")[0]
-            ):
-                is_constructor = True
-            elif not cleaned_group1 and not method_name.startswith("~"):
+            type_name_only = cleaned_group1.replace("*", "").replace("&", "").strip()
+            if method_name == type_name_only or (not cleaned_group1 and method_name):
                 is_constructor = True
 
         if is_destructor:
-            methodInfo.name = (
-                method_name if method_name.startswith("~") else cleaned_group1
-            )
-            if not methodInfo.name.startswith("~"):
-                methodInfo.name = "~" + methodInfo.name.split("<")[0]
+            methodInfo.name = method_name
             methodInfo.dataType = None
         elif is_constructor:
             methodInfo.name = method_name
@@ -188,27 +194,50 @@ class CppMethodAnalyzer(AbstractAnalyzer):
         if not params_str or params_str.strip().lower() == "void":
             return []
 
-        for item in params_str.split(","):
-            item = item.strip()
+        level = 0
+        processed_str = ""
+        for char in params_str:
+            if char == "<":
+                level += 1
+            elif char == ">":
+                level -= 1
+            elif char == "," and level > 0:
+                processed_str += "@@COMMA@@"
+            else:
+                processed_str += char
+
+        for item in processed_str.split(","):
+            item = item.replace("@@COMMA@@", ",").strip()
+            if not item:
+                continue
+
+            item = re.sub(r"\s*=[^,]+", "", item).strip()
             if not item:
                 continue
 
             parts = item.split()
+            param_type = item
             if len(parts) > 1:
-                param_type = " ".join(parts[:-1]).strip()
-                if parts[-1].startswith("*") or parts[-1].startswith("&"):
-                    param_type += parts[-1][0]
-                    param_type = param_type.replace(" *", "*").replace(" &", "&")
+                last_word = parts[-1]
+                if not (
+                    last_word.endswith("*")
+                    or last_word.endswith("&")
+                    or last_word == "const"
+                ):
+                    param_type = " ".join(parts[:-1]).strip()
+                    if last_word.startswith("*") or last_word.startswith("&"):
+                        param_type += last_word
+                else:
+                    param_type = " ".join(parts).strip()
 
-                param_type = re.sub(r"\s*=[^,]+", "", param_type).strip()
+            keywords_to_remove = {"const", "volatile", "register", "typename"}
+            cleaned_parts = [
+                p for p in param_type.split() if p not in keywords_to_remove
+            ]
+            final_type = " ".join(cleaned_parts)
 
-                if param_type:
-                    paramList.append(param_type)
-            elif len(parts) == 1:
-                param_type = parts[0].strip()
-                param_type = re.sub(r"\s*=[^,]+", "", param_type).strip()
-                if param_type:
-                    paramList.append(param_type)
+            if final_type:
+                paramList.append(final_type)
 
         return paramList
 

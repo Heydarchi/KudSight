@@ -9,46 +9,63 @@ from utils.FileReader import *
 
 class JavaVariableAnalyzer(AbstractAnalyzer):
     def __init__(self) -> None:
+        # Regex to capture: access modifier (optional), static (optional), final (optional), type, name
+        # Allows for generics in type, array brackets, and potential initialization
         self.pattern = (
-            r"(?:public|protected|private)?\s*"
-            r"(?:static\s+)?(?:final\s+)?"
-            r"([\w<>\[\].]+)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*[=;]"
+            r"^\s*(?:(public|protected|private)\s+)?"
+            r"(?:(static)\s+)?(?:(final)\s+)?"
+            r"([\w<>\[\],\s\.]+)\s+"  # Type (group 4) - allows generics, arrays, qualified names
+            r"([a-zA-Z_][a-zA-Z0-9_]*)\s*"  # Name (group 5)
+            r"(?:\[\s*\])*"  # Optional array brackets after name
+            r"\s*[=;]"  # End with = or ;
         )
 
     def analyze(self, filePath, lang=None, classStr=None):
         listOfVariables = []
         content = classStr if classStr else FileReader().readFile(filePath)
 
-        match = re.search(self.pattern, content, flags=re.MULTILINE | re.DOTALL)
-        while match:
-            listOfVariables.append(self.extractVariableInfo(match.group(0)))
-            content = content[match.end() :]
-            match = re.search(self.pattern, content, flags=re.MULTILINE | re.DOTALL)
+        # Analyze line by line to avoid issues with multi-line declarations (though less common for fields)
+        for line in content.splitlines():
+            match = re.search(self.pattern, line)
+            if match:
+                variableInfo = self.extractVariableInfo(match)
+                if variableInfo:
+                    listOfVariables.append(variableInfo)
 
         return listOfVariables
 
-    def extractVariableInfo(self, inputString):
+    def extractVariableInfo(self, match):
         variableInfo = VariableNode()
-        parts = inputString.replace(";", "").replace("=", "").split()
 
-        variableInfo.accessLevel = AccessEnum.PRIVATE
-        if "public" in parts:
+        access_modifier = match.group(1)
+        is_static = bool(match.group(2))
+        is_final = bool(match.group(3))
+        data_type = match.group(4).strip()
+        name = match.group(5).strip()
+
+        # Determine access level
+        if access_modifier == "public":
             variableInfo.accessLevel = AccessEnum.PUBLIC
-            parts.remove("public")
-        elif "protected" in parts:
+        elif access_modifier == "protected":
             variableInfo.accessLevel = AccessEnum.PROTECTED
-            parts.remove("protected")
+        elif access_modifier == "private":
+            variableInfo.accessLevel = AccessEnum.PRIVATE
+        else:
+            # Default Java access (package-private) - mapping to PROTECTED for simplicity
+            # or could add a PACKAGE level to AccessEnum
+            variableInfo.accessLevel = (
+                AccessEnum.PROTECTED
+            )  # Or PRIVATE depending on desired default
 
-        if "static" in parts:
-            variableInfo.isStatic = True
-            parts.remove("static")
-        if "final" in parts:
-            variableInfo.isFinal = True
-            parts.remove("final")
+        variableInfo.isStatic = is_static
+        variableInfo.isFinal = is_final
+        variableInfo.dataType = data_type
+        variableInfo.name = name
 
-        if len(parts) >= 2:
-            variableInfo.dataType = parts[0]
-            variableInfo.name = parts[1]
+        # Basic validation
+        if not variableInfo.dataType or not variableInfo.name:
+            return None
+
         return variableInfo
 
 

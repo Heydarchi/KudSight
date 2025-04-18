@@ -9,14 +9,34 @@ from utils.FileReader import *
 
 class CppVariableAnalyzer(AbstractAnalyzer):
     def __init__(self) -> None:
-        self.pattern = r"^\s*(?!public:|private:|protected:|class |struct |enum |using |typedef |namespace |template |friend |virtual |explicit |inline )([a-zA-Z_][a-zA-Z0-9_:<>*&\s,]+?)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:\[[^\]]*\])?\s*[;={]"
+        # Regex V2: Handles static const, allows initializers, better type capture
+        # Group 1: Type (including static, const, namespaces, templates, pointers/refs)
+        # Group 2: Variable Name
+        # Group 3: Optional array specifier
+        # Group 4: Optional initializer part (ignored) or semicolon
+        self.pattern = (
+            r"^\s*"
+            # Negative lookahead for keywords that start lines but aren't variable declarations
+            r"(?!using |typedef |namespace |template |friend |virtual |explicit |inline |class |struct |enum |public:|private:|protected:|[^;]*\([^;]*\)\s*[:{])"
+            # Capture the full type, including keywords like static, const, namespaces, templates, *, &
+            r"((?:(?:static|const|constexpr|mutable|volatile|typename)\s+)*"  # Keywords before type
+            r"[a-zA-Z_][a-zA-Z0-9_:]*(?:<[^>]*>)?(?:\s*[*&])*\s*"  # Core type name with potential template, pointer/ref
+            r"(?:\s*(?:const|volatile)\s*)*"  # Keywords after type name
+            r"(?:\s*[*&])*\s*)"  # Pointer/ref after keywords
+            # Capture the variable name
+            r"([a-zA-Z_][a-zA-Z0-9_]*)"
+            # Optional array specifier
+            r"(\[[^\]]*\])?"
+            # Optional initializer or ending semicolon
+            r"(?:\s*=[^;{]*)?\s*[;{]"
+        )
         self.access_pattern = r"^\s*(public|private|protected):"
 
     def analyze(self, filePath, lang=None, classStr=None):
         listOfVariables = []
         content = classStr if classStr else FileReader().readFile(filePath)
 
-        current_access = AccessEnum.PRIVATE
+        current_access = AccessEnum.PRIVATE  # Default for C++ classes
 
         lines = content.splitlines()
         for line in lines:
@@ -31,12 +51,25 @@ class CppVariableAnalyzer(AbstractAnalyzer):
                     current_access = AccessEnum.PUBLIC
                 elif specifier == "protected":
                     current_access = AccessEnum.PROTECTED
-                else:
+                else:  # private
                     current_access = AccessEnum.PRIVATE
-                continue
+                continue  # Skip the access specifier line itself
 
-            match = re.match(self.pattern, line)
+            # Use re.search to find the pattern anywhere in the line, as fields might not start at the beginning
+            match = re.search(self.pattern, line)
             if match:
+                # Check if it's inside a function body (basic check: presence of parentheses before match)
+                # This is imperfect but helps avoid capturing local variables.
+                preceding_text = line[: match.start()]
+                if (
+                    "(" in preceding_text and ")" not in preceding_text
+                ):  # Likely inside params
+                    continue
+                if (
+                    "{" in preceding_text and "}" not in preceding_text
+                ):  # Likely inside body start
+                    continue
+
                 variableInfo = self.extractVariableInfo(line, match, current_access)
                 if variableInfo:
                     listOfVariables.append(variableInfo)
@@ -47,20 +80,62 @@ class CppVariableAnalyzer(AbstractAnalyzer):
         variableInfo = VariableNode()
         variableInfo.accessLevel = current_access
 
-        dataType = match.group(1).strip()
+        full_type = match.group(1).strip()
         name = match.group(2).strip()
+        array_spec = match.group(3)  # Capture array specifier if present
 
-        modifiers = {"static", "const", "mutable", "volatile", "inline", "constexpr"}
-        type_parts = dataType.split()
+        # Modifiers check within the full type string
+        modifiers_found = {
+            "static",
+            "const",
+            "constexpr",
+            "mutable",
+            "volatile",
+            "typename",
+        }  # Added typename
+        type_parts = full_type.split()
 
         variableInfo.isStatic = "static" in type_parts
-        variableInfo.isFinal = "const" in type_parts
+        # Remove C++ specific 'isFinal' based on 'const' - it's not the same semantic
 
-        cleaned_type_parts = [part for part in type_parts if part not in modifiers]
-        variableInfo.dataType = " ".join(cleaned_type_parts)
+        # Clean the type string by removing modifiers for the dataType field
+        # Keep pointers/references attached to the core type name
+        cleaned_type_parts = []
+        pointer_ref = ""
+        for part in type_parts:
+            if part in modifiers_found:
+                continue
+            # Check if part ends with * or & and separate it
+            cleaned_part = part
+            temp_ptr_ref = ""
+            while cleaned_part.endswith("*") or cleaned_part.endswith("&"):
+                temp_ptr_ref = cleaned_part[-1] + temp_ptr_ref
+                cleaned_part = cleaned_part[:-1]
+
+            if cleaned_part:  # Add the core part if not empty
+                cleaned_type_parts.append(cleaned_part)
+            if temp_ptr_ref:  # Store the last found pointer/ref sequence
+                pointer_ref = temp_ptr_ref
+
+        # Join cleaned parts and append the pointer/reference symbols
+        variableInfo.dataType = " ".join(cleaned_type_parts) + pointer_ref
+
+        # Append array specifier back to type if it exists
+        if array_spec:
+            variableInfo.dataType += array_spec
+
         variableInfo.name = name
 
+        # Basic validation
         if not variableInfo.dataType or not variableInfo.name:
+            return None
+        # Avoid capturing things that look like function pointers assigned inline (heuristic)
+        # Allow * but check for parentheses which are more indicative of function pointers here
+        if (
+            "(" in variableInfo.dataType
+            and ")" in variableInfo.dataType
+            and "*" in variableInfo.dataType
+        ):
             return None
 
         return variableInfo
