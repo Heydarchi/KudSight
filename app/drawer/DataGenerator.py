@@ -1,8 +1,12 @@
 import os, sys
 from model.AnalyzerEntities import *
 from model.DataGeneratorEntities import *
+
 # --- Start Change: Import ClassUmlDrawer for its filtering logic ---
-from drawer.ClassUmlDrawer import ClassUmlDrawer # Assuming CPP for now, might need adjustment for multi-lang
+from drawer.ClassUmlDrawer import (
+    ClassUmlDrawer,
+)  # Assuming CPP for now, might need adjustment for multi-lang
+
 # --- End Change ---
 
 from utils.FileWriter import *
@@ -22,7 +26,6 @@ class DataGenerator:
             self._uml_drawer_for_filtering = None
         # --- End Change ---
 
-
     def generateData(self, listOfClassNodes: list[ClassNode]):
         dataList = list()
 
@@ -33,7 +36,7 @@ class DataGenerator:
         # This ensures referenced nodes exist before duplicate removal logic
         self.graphData.add_blank_classes()
         # --- End Change ---
-        
+
         # --- Start Change: Remove duplicates *after* adding all nodes/links ---
         self.graphData.remove_duplicates()
         # --- End Change ---
@@ -58,9 +61,11 @@ class DataGenerator:
         classData.id = self.fix_name_issue(classInfo.name)
         # Add template params to ID if they exist, similar to UML drawer logic
         if classInfo.params:
-             classData.id = f'"{classInfo.name}<{", ".join(classInfo.params)}>"'
+            classData.id = f'"{classInfo.name}<{", ".join(classInfo.params)}>"'
         # --- End Change ---
-        classData.type = "interface" if classInfo.isInterface else "class" # Set type based on flag
+        classData.type = (
+            "interface" if classInfo.isInterface else "class"
+        )  # Set type based on flag
 
         # --- Start Change: Add flags ---
         classData.isAbstract = classInfo.isAbstract
@@ -81,7 +86,9 @@ class DataGenerator:
             if var.name not in ["return"]:
                 # Ensure var has expected attributes before formatting
                 try:
-                    attr_str = f"{var.accessLevel.name.lower()} {'static ' if var.isStatic else ''}{var.dataType} {var.name}".replace(";", "").strip()
+                    attr_str = f"{var.accessLevel.name.lower()} {'static ' if var.isStatic else ''}{var.dataType} {var.name}".replace(
+                        ";", ""
+                    ).strip()
                     attributes_to_add.append(attr_str)
                     print(f"    - Adding attribute: {attr_str}")
                 except AttributeError as e:
@@ -94,7 +101,9 @@ class DataGenerator:
         self.graphData.nodes.append(classData)
 
         # --- Start Change: Use potentially templated ID for source ---
-        print(f"  - Processing relations for {classData.id}:") # Use the potentially templated ID
+        print(
+            f"  - Processing relations for {classData.id}:"
+        )  # Use the potentially templated ID
         for relation in classInfo.relations:
             try:
                 target_name_raw = relation.name
@@ -105,25 +114,40 @@ class DataGenerator:
                 should_ignore = False
                 if self._uml_drawer_for_filtering:
                     # Pass the raw name for filtering check
-                    should_ignore = self._uml_drawer_for_filtering._should_ignore_type(target_name_raw)
+                    should_ignore = self._uml_drawer_for_filtering._should_ignore_type(
+                        target_name_raw
+                    )
                 else:
                     # Basic fallback if drawer init failed (less accurate)
-                    if target_name_fixed.lower() in ["string", "int", "void", "char", "bool", "t"]:
-                         should_ignore = True
+                    if target_name_fixed.lower() in [
+                        "string",
+                        "int",
+                        "void",
+                        "char",
+                        "bool",
+                        "t",
+                    ]:
+                        should_ignore = True
 
                 if not should_ignore:
                     dependency = Dependency()
-                    dependency.source = classData.id # Use the potentially templated source ID
-                    dependency.target = target_name_fixed # Use fixed target name
+                    dependency.source = (
+                        classData.id
+                    )  # Use the potentially templated source ID
+                    dependency.target = target_name_fixed  # Use fixed target name
                     # Add template params to target if needed (complex)
                     # if target_name_raw in known_template_classes:
                     #    dependency.target = f'"{target_name_raw}<...>"' # Placeholder
 
                     dependency.relation = relation.relationship.name.lower()
-                    print(f"    - Adding link: {dependency.source} -> {dependency.target} ({dependency.relation})")
+                    print(
+                        f"    - Adding link: {dependency.source} -> {dependency.target} ({dependency.relation})"
+                    )
                     self.graphData.links.append(dependency)
                 else:
-                    print(f"    - Skipping ignored/primitive relation: {classData.id} -> {target_name_fixed} ({relation.relationship.name.lower()})")
+                    print(
+                        f"    - Skipping ignored/primitive relation: {classData.id} -> {target_name_fixed} ({relation.relationship.name.lower()})"
+                    )
 
             except AttributeError as e:
                 print(f"    - Error processing relation {relation}: {e}")

@@ -11,6 +11,7 @@ from drawer.DataGenerator import DataGenerator
 from analyzer.AbstractAnalyzer import AbstractAnalyzer
 from drawer.ClassUmlDrawer import *
 
+
 class FileAnalyzer(AbstractAnalyzer):
     def __init__(self) -> None:
         if not os.path.exists("static/out"):
@@ -35,13 +36,21 @@ class FileAnalyzer(AbstractAnalyzer):
                         listOfClasses = classAnalyzer.analyze(filePath, language)
                         listOfClassNodes.extend(listOfClasses)
                     except Exception as e:
-                        print(f"ERROR analyzing file {filePath}: {e}")  # Add error logging
+                        print(
+                            f"ERROR analyzing file {filePath}: {e}"
+                        )  # Add error logging
             else:
                 print(f"- Skipping unsupported file: {filePath}")
 
         if listOfClassNodes:
-            primary_language = list(analyzed_languages)[0] if len(analyzed_languages) == 1 else FileTypeEnum.CPP  # Simple heuristic
-            print(f"Generating consolidated UML for language context: {primary_language.name}")
+            primary_language = (
+                list(analyzed_languages)[0]
+                if len(analyzed_languages) == 1
+                else FileTypeEnum.CPP
+            )  # Simple heuristic
+            print(
+                f"Generating consolidated UML for language context: {primary_language.name}"
+            )
             try:
                 umlDrawer = ClassUmlDrawer(primary_language)
                 umlDrawer.draw_multiple_uml(listOfClassNodes, "consolidated_uml.puml")

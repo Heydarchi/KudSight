@@ -41,16 +41,20 @@ class GraphData:
 
     def _normalize_id(self, node_id: str) -> str:
         """Remove potential quotes for consistent ID checking."""
-        if isinstance(node_id, str) and node_id.startswith('"') and node_id.endswith('"'):
+        if (
+            isinstance(node_id, str)
+            and node_id.startswith('"')
+            and node_id.endswith('"')
+        ):
             return node_id[1:-1]
         return node_id
 
     def add_blank_classes(self):
         # Normalize IDs before comparison
         defined_nodes = {self._normalize_id(node.id) for node in self.nodes}
-        referenced_nodes = {self._normalize_id(link.source) for link in self.links}.union(
-            {self._normalize_id(link.target) for link in self.links}
-        )
+        referenced_nodes = {
+            self._normalize_id(link.source) for link in self.links
+        }.union({self._normalize_id(link.target) for link in self.links})
 
         undefined_nodes = referenced_nodes - defined_nodes
 
@@ -80,7 +84,9 @@ class GraphData:
                 kept_nodes.append(node)
             else:
                 # Optional: Merge data if duplicates found, or just keep first
-                print(f"Duplicate node found and removed: {node.id} (normalized: {node_id_normalized})")
+                print(
+                    f"Duplicate node found and removed: {node.id} (normalized: {node_id_normalized})"
+                )
         self.nodes = kept_nodes
 
         # Remove duplicate links based on normalized 'source', 'target', 'relation'
@@ -90,13 +96,15 @@ class GraphData:
             link_id_tuple = (
                 self._normalize_id(link.source),
                 self._normalize_id(link.target),
-                link.relation
+                link.relation,
             )
             if link_id_tuple not in unique_links:
                 unique_links.add(link_id_tuple)
                 filtered_links.append(link)
             else:
-                print(f"Duplicate link found and removed: {link.source} -> {link.target} ({link.relation})")
+                print(
+                    f"Duplicate link found and removed: {link.source} -> {link.target} ({link.relation})"
+                )
         self.links = filtered_links
 
     def to_json(self) -> str:
@@ -104,5 +112,11 @@ class GraphData:
         # Blank classes should be added before calling this
         # Ensure nodes/links are stable before dumping
         self.nodes.sort(key=lambda x: self._normalize_id(x.id))
-        self.links.sort(key=lambda x: (self._normalize_id(x.source), self._normalize_id(x.target), x.relation))
+        self.links.sort(
+            key=lambda x: (
+                self._normalize_id(x.source),
+                self._normalize_id(x.target),
+                x.relation,
+            )
+        )
         return json.dumps(asdict(self), indent=4)

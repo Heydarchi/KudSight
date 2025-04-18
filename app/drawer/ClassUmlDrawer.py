@@ -21,8 +21,22 @@ class ClassUmlDrawer:
         # common_types_to_ignore.add("list")
         # --- End Change ---
 
-        basic_primitives = {"void", "bool", "char", "wchar_t", "short", "int", "long", "float", "double", "size_t", "auto"}
-        combined_ignored = set(loaded_keywords) | common_types_to_ignore | basic_primitives
+        basic_primitives = {
+            "void",
+            "bool",
+            "char",
+            "wchar_t",
+            "short",
+            "int",
+            "long",
+            "float",
+            "double",
+            "size_t",
+            "auto",
+        }
+        combined_ignored = (
+            set(loaded_keywords) | common_types_to_ignore | basic_primitives
+        )
         self.dataTypeToIgnore = list(combined_ignored)
         self.type_cleaner = self._get_type_cleaner()
 
@@ -35,13 +49,15 @@ class ClassUmlDrawer:
         try:
             current_script_dir = Path(__file__).resolve().parent
             app_dir = current_script_dir.parent
-            data_dir = app_dir.parent / 'data'
+            data_dir = app_dir.parent / "data"
 
             if not data_dir.exists():
                 print(f"Warning: Calculated data directory does not exist: {data_dir}")
-                data_dir = Path('data')
+                data_dir = Path("data")
                 if not data_dir.exists():
-                    print(f"Warning: Fallback data directory does not exist: {data_dir.resolve()}")
+                    print(
+                        f"Warning: Fallback data directory does not exist: {data_dir.resolve()}"
+                    )
                     return []
 
             file_name = f"{file_type.name}.txt"
@@ -59,7 +75,7 @@ class ClassUmlDrawer:
             return []
 
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path, "r") as f:
                 keywords = [line.strip() for line in f if line.strip()]
                 print(f"Loaded {len(keywords)} keywords from {file_path.resolve()}")
         except Exception as e:
@@ -68,29 +84,44 @@ class ClassUmlDrawer:
         return keywords
 
     def _get_type_cleaner(self):
-        modifiers = {"const", "volatile", "static", "mutable", "register", "inline", "extern", "typename", "using"}
+        modifiers = {
+            "const",
+            "volatile",
+            "static",
+            "mutable",
+            "register",
+            "inline",
+            "extern",
+            "typename",
+            "using",
+        }
         postfixes = {"*", "&", "&&"}
         namespaces_to_strip = {"std::"}
 
         def clean_type(name: str) -> str:
-            if not isinstance(name, str): return ""
+            if not isinstance(name, str):
+                return ""
             name = re.sub(r"<.*?>", "", name)
             name = re.sub(r"\s*=[^,]+", "", name)
-            for post in postfixes: name = name.replace(post, " ")
+            for post in postfixes:
+                name = name.replace(post, " ")
 
             parts = name.split()
             core_parts = [p for p in parts if p and p not in modifiers]
-            if not core_parts: return ""
+            if not core_parts:
+                return ""
 
             cleaned_name = " ".join(core_parts)
             for ns in namespaces_to_strip:
                 if cleaned_name.startswith(ns):
-                    cleaned_name = cleaned_name[len(ns):]
+                    cleaned_name = cleaned_name[len(ns) :]
             return cleaned_name.strip()
+
         return clean_type
 
     def _should_ignore_type(self, type_name: str) -> bool:
-        if not type_name: return True
+        if not type_name:
+            return True
         cleaned_name = self.type_cleaner(type_name)
         if cleaned_name in self.dataTypeToIgnore:
             return True
@@ -109,11 +140,15 @@ class ClassUmlDrawer:
 
         plantUmlList = list(dict.fromkeys(plantUmlList))
 
-        filePath = "static/out/data" + self.sanitize_filename(classInfo.name) + "_uml.puml"
+        filePath = (
+            "static/out/data" + self.sanitize_filename(classInfo.name) + "_uml.puml"
+        )
         self.write_list_to_file(filePath, plantUmlList)
         print(f"Generated single UML: {filePath}")
 
-    def draw_multiple_uml(self, listOfClassNodes: list[ClassNode], output_filename: str):
+    def draw_multiple_uml(
+        self, listOfClassNodes: list[ClassNode], output_filename: str
+    ):
         if not listOfClassNodes:
             print("No class nodes provided for consolidated UML.")
             return
@@ -162,24 +197,30 @@ class ClassUmlDrawer:
         # --- Start Change: Format name with template params ---
         name = self.fix_name_issue(classInfo.name)
         if classInfo.params:
-             # Quote the name if it contains template parameters
-             name = f'"{name}<{", ".join(classInfo.params)}>"'
+            # Quote the name if it contains template parameters
+            name = f'"{name}<{", ".join(classInfo.params)}>"'
         # --- End Change ---
 
         # --- Start Change: Add {abstract} stereotype ---
         stereotype_parts = []
-        if classInfo.isAbstract: stereotype_parts.append("abstract")
-        if classInfo.isFinal: stereotype_parts.append("final")
-        if classInfo.isStatic: stereotype_parts.append("static")
+        if classInfo.isAbstract:
+            stereotype_parts.append("abstract")
+        if classInfo.isFinal:
+            stereotype_parts.append("final")
+        if classInfo.isStatic:
+            stereotype_parts.append("static")
         stereotype = f"<< { ' '.join(stereotype_parts) } >>" if stereotype_parts else ""
         # --- End Change ---
 
         bases = []
         for rel in classInfo.relations:
-            if rel.relationship in [InheritanceEnum.EXTENDED, InheritanceEnum.IMPLEMENTED]:
+            if rel.relationship in [
+                InheritanceEnum.EXTENDED,
+                InheritanceEnum.IMPLEMENTED,
+            ]:
                 if not self._should_ignore_type(rel.name):
                     bases.append(self.fix_name_issue(rel.name))
-        
+
         extends_clause = f"extends {', '.join(bases)}" if bases else ""
 
         definition.append(f"{class_type} {name} {stereotype} {extends_clause} {{")
@@ -187,33 +228,46 @@ class ClassUmlDrawer:
         for var in sorted(classInfo.variables, key=lambda x: x.name):
             access = self._get_access_symbol(var.accessLevel)
             static_final = f"{'{static} ' if var.isStatic else ''}{'{final} ' if var.isFinal else ''}".strip()
-            if static_final: static_final = f"{{{static_final}}} "
-            definition.append(f"  {access} {static_final}{self.fix_name_issue(var.dataType)} {var.name}")
+            if static_final:
+                static_final = f"{{{static_final}}} "
+            definition.append(
+                f"  {access} {static_final}{self.fix_name_issue(var.dataType)} {var.name}"
+            )
 
         for method in sorted(classInfo.methods, key=lambda x: x.name):
             access = self._get_access_symbol(method.accessLevel)
             # --- Start Change: Use isAbstract for method stereotype ---
             stereotype_m_parts = []
-            if method.isStatic: stereotype_m_parts.append("static")
-            if method.isAbstract: stereotype_m_parts.append("abstract")
+            if method.isStatic:
+                stereotype_m_parts.append("static")
+            if method.isAbstract:
+                stereotype_m_parts.append("abstract")
             # Consider adding isOverridden here if needed for other languages/cases
             # if method.isOverridden: stereotype_m_parts.append("overridden") # Example
-            static_override = f"{{ { ' '.join(stereotype_m_parts) } }}" if stereotype_m_parts else ""
+            static_override = (
+                f"{{ { ' '.join(stereotype_m_parts) } }}" if stereotype_m_parts else ""
+            )
             # --- End Change ---
             params_str = ", ".join(self.fix_name_issue(p) for p in method.params)
-            return_type = self.fix_name_issue(method.dataType) if method.dataType else ""
+            return_type = (
+                self.fix_name_issue(method.dataType) if method.dataType else ""
+            )
             method_name_display = self.fix_name_issue(method.name)
             if method.dataType is None:
                 return_type_display = ""
             else:
                 return_type_display = f": {return_type}"
 
-            definition.append(f"  {access} {static_override} {method_name_display}({params_str}){return_type_display}")
+            definition.append(
+                f"  {access} {static_override} {method_name_display}({params_str}){return_type_display}"
+            )
 
         definition.append("}")
         return definition
 
-    def dump_relations_for_class(self, classInfo: ClassNode, all_nodes: dict = None) -> list[str]:
+    def dump_relations_for_class(
+        self, classInfo: ClassNode, all_nodes: dict = None
+    ) -> list[str]:
         plantUmlList = []
         source_name = self.fix_name_issue(classInfo.name)
 
@@ -235,7 +289,9 @@ class ClassUmlDrawer:
                 if arrow:
                     link_tuple = (source_name, arrow, target_name_fixed)
                     if link_tuple not in processed_targets:
-                        plantUmlList.append(f"{source_name} {arrow} {target_name_fixed}")
+                        plantUmlList.append(
+                            f"{source_name} {arrow} {target_name_fixed}"
+                        )
                         processed_targets.add(link_tuple)
 
         return plantUmlList
@@ -258,19 +314,26 @@ class ClassUmlDrawer:
         return deps
 
     def _get_access_symbol(self, accessLevel: AccessEnum) -> str:
-        if accessLevel == AccessEnum.PUBLIC: return "+"
-        if accessLevel == AccessEnum.PRIVATE: return "-"
-        if accessLevel == AccessEnum.PROTECTED: return "#"
+        if accessLevel == AccessEnum.PUBLIC:
+            return "+"
+        if accessLevel == AccessEnum.PRIVATE:
+            return "-"
+        if accessLevel == AccessEnum.PROTECTED:
+            return "#"
         return "~"
 
     def _normalize_id(self, node_id: str) -> str:
-        if isinstance(node_id, str) and node_id.startswith('"') and node_id.endswith('"'):
+        if (
+            isinstance(node_id, str)
+            and node_id.startswith('"')
+            and node_id.endswith('"')
+        ):
             return node_id[1:-1]
         return node_id
 
     def sanitize_filename(self, name: str) -> str:
         name = self._normalize_id(name)
-        name = re.sub(r'[<>:"/\\|?*]', '_', name)
+        name = re.sub(r'[<>:"/\\|?*]', "_", name)
         return name
 
     def generatePng(self, filepath):
@@ -288,7 +351,7 @@ class ClassUmlDrawer:
     def fix_name_issue(self, name):
         # --- Start Change: Handle potential None input ---
         if not isinstance(name, str):
-             return ""
+            return ""
         # --- End Change ---
         # --- Start Change: No need to quote template names here, handled in dump_single_class_definition ---
         # if ">" in name or "<" in name:
