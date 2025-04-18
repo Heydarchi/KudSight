@@ -1,5 +1,6 @@
 import os
 import sys
+from datetime import datetime  # Import datetime
 from analyzer.common import AnalyzerHelper  # if needed elsewhere
 from analyzer.java.JavaClassAnalyzer import JavaClassAnalyzer
 from analyzer.cpp.CppClassAnalyzer import CppClassAnalyzer
@@ -23,43 +24,46 @@ class FileAnalyzer(AbstractAnalyzer):
         print(listOfFiles)
 
         listOfClassNodes = []
-        analyzed_languages = set()  # Keep track of languages found
+        analyzed_languages = set()
 
         for filePath in listOfFiles:
             language = self.detectLang(filePath)
             if language != FileTypeEnum.UNDEFINED:
                 print(f"- Analyzing: {filePath} {language}")
-                analyzed_languages.add(language)  # Record the language
+                analyzed_languages.add(language)
                 classAnalyzer = self.get_class_analyzer(language)
                 if classAnalyzer:
                     try:
                         listOfClasses = classAnalyzer.analyze(filePath, language)
                         listOfClassNodes.extend(listOfClasses)
                     except Exception as e:
-                        print(
-                            f"ERROR analyzing file {filePath}: {e}"
-                        )  # Add error logging
+                        print(f"ERROR analyzing file {filePath}: {e}")
             else:
                 print(f"- Skipping unsupported file: {filePath}")
+
+        # Generate base filename
+        sanitized_path_prefix = DataGenerator()._sanitize_path_for_filename(targetPath)
+        date_time = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
+        base_filename = f"{sanitized_path_prefix}_{date_time}"
 
         if listOfClassNodes:
             primary_language = (
                 list(analyzed_languages)[0]
                 if len(analyzed_languages) == 1
                 else FileTypeEnum.CPP
-            )  # Simple heuristic
+            )
             print(
                 f"Generating consolidated UML for language context: {primary_language.name}"
             )
             try:
                 umlDrawer = ClassUmlDrawer(primary_language)
-                umlDrawer.draw_multiple_uml(listOfClassNodes, "consolidated_uml.puml")
+                umlDrawer.draw_multiple_uml(listOfClassNodes, base_filename)
             except Exception as e:
                 print(f"ERROR generating consolidated UML: {e}")
         else:
             print("No classes found to generate consolidated UML.")
 
-        self.generateData(listOfClassNodes, targetPath)  # Pass targetPath here
+        self.generateData(listOfClassNodes, targetPath, base_filename)
 
     def get_class_analyzer(self, language):
         if language == FileTypeEnum.JAVA:
@@ -72,10 +76,9 @@ class FileAnalyzer(AbstractAnalyzer):
             return CSharpClassAnalyzer()
         return None
 
-    def generateData(self, listOfClassNodes, targetPath):
+    def generateData(self, listOfClassNodes, targetPath, base_filename):
         dataGenerator = DataGenerator()
-        # Pass targetPath to the generator's method
-        dataGenerator.generateData(listOfClassNodes, targetPath)
+        dataGenerator.generateData(listOfClassNodes, targetPath, base_filename)
 
     def detectLang(self, fileName):
         if fileName.endswith(".java"):

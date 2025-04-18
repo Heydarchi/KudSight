@@ -128,14 +128,15 @@ class ClassUmlDrawer:
         plantUmlList.append("@enduml")
         plantUmlList = list(dict.fromkeys(plantUmlList))
         filePath = (
-            "static/out/data" + self.sanitize_filename(classInfo.name) + "_uml.puml"
+            "static/out/data_" + self.sanitize_filename(classInfo.name) + "_uml.puml"
         )
-        self.write_list_to_file(filePath, plantUmlList)
-        print(f"Generated single UML: {filePath}")
+        if self.write_list_to_file(filePath, plantUmlList):
+            print(f"Generated single UML: {filePath}")
+            self.generatePng(filePath)
+        else:
+            print(f"Failed to write single UML file: {filePath}")
 
-    def draw_multiple_uml(
-        self, listOfClassNodes: list[ClassNode], output_filename: str
-    ):
+    def draw_multiple_uml(self, listOfClassNodes: list[ClassNode], base_filename: str):
         if not listOfClassNodes:
             print("No class nodes provided for consolidated UML.")
             return
@@ -182,9 +183,12 @@ class ClassUmlDrawer:
         plantUmlList.extend(sorted(list(all_relations)))
         plantUmlList.append("@enduml")
 
-        output_path = Path("static/out") / self.sanitize_filename(output_filename)
-        self.write_list_to_file(str(output_path), plantUmlList)
-        print(f"Generated consolidated UML: {output_path}")
+        output_puml_path = Path("static/out") / f"{base_filename}.puml"
+        if self.write_list_to_file(str(output_puml_path), plantUmlList):
+            print(f"Generated consolidated UML: {str(output_puml_path)}")
+            self.generatePng(str(output_puml_path))
+        else:
+            print(f"Failed to write consolidated UML file: {str(output_puml_path)}")
 
     def _get_qualified_name(self, classInfo: ClassNode) -> str:
         name_part = classInfo.name
@@ -369,7 +373,75 @@ class ClassUmlDrawer:
         return name
 
     def generatePng(self, filepath):
-        os.system("java -jar plantuml/plantuml.jar " + filepath)
+        project_root = (
+            Path(__file__).resolve().parent.parent.parent
+        )  # Navigate up to project root (KudSight)
+        app_root = project_root / "app"  # Path to app directory
+
+        plantuml_jar_path_abs = (project_root / "app/plantuml/plantuml.jar").resolve()
+
+        if not plantuml_jar_path_abs.exists():
+            print(
+                f"Error: plantuml.jar not found at expected location: {plantuml_jar_path_abs}"
+            )
+            return
+
+        # Absolute path to the input PUML file
+        puml_path_abs = Path(filepath).resolve()
+
+        # Ensure the input file path is relative to the project root for the command if needed
+        try:
+            puml_path_rel_to_project = puml_path_abs.relative_to(project_root)
+        except ValueError:
+            # If the puml file is somehow outside the project root, use absolute
+            print(
+                f"Warning: PUML file {puml_path_abs} seems outside project root {project_root}. Using absolute path."
+            )
+            puml_path_rel_to_project = puml_path_abs
+
+        # Output directory relative to project root (e.g., "app/static/out")
+        output_directory_rel = Path("app") / "static" / "out"
+        output_directory_abs = (
+            project_root / output_directory_rel
+        )  # Absolute path for mkdir
+
+        # Ensure the output directory exists
+        output_directory_abs.mkdir(parents=True, exist_ok=True)
+
+        # Use relative output path and potentially relative input path in the command
+        # Run the command from the project root directory
+        command = f'java -jar "{plantuml_jar_path_abs}" -output "{output_directory_abs}" "{puml_path_rel_to_project}"'
+        working_directory = project_root
+
+        print(f"Executing in '{working_directory}': {command}")
+        try:
+            import subprocess
+
+            process = subprocess.run(
+                command,
+                shell=True,
+                cwd=working_directory,
+                capture_output=True,
+                text=True,
+            )
+
+            if process.returncode == 0:
+                png_filename = puml_path_abs.with_suffix(".png").name
+                print(
+                    f"Successfully generated PNG: {output_directory_abs / png_filename}"
+                )
+                if process.stdout:
+                    print(f"PlantUML STDOUT:\n{process.stdout}")
+            else:
+                print(
+                    f"Error generating PNG for: {filepath} (Exit code: {process.returncode})"
+                )
+                if process.stdout:
+                    print(f"PlantUML STDOUT:\n{process.stdout}")
+                if process.stderr:
+                    print(f"PlantUML STDERR:\n{process.stderr}")
+        except Exception as e:
+            print(f"Exception generating PNG for {filepath}: {e}")
 
     def write_list_to_file(self, file_path, list_of_str):
         try:

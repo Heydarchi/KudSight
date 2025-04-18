@@ -19,13 +19,12 @@ class DataGenerator:
             print(f"Warning: Could not instantiate ClassUmlDrawer for filtering: {e}")
             self._uml_drawer_for_filtering = None
 
-    # Ensure this signature accepts targetPath
-    def generateData(self, listOfClassNodes: list[ClassNode], targetPath: str):
-        # --- Start Change: Store original path ---
+    # Ensure this signature accepts targetPath and base_filename
+    def generateData(
+        self, listOfClassNodes: list[ClassNode], targetPath: str, base_filename: str
+    ):
         self.graphData.analysisSourcePath = targetPath
-        # --- End Change ---
 
-        # --- Start Change: Build lookup maps ---
         qualified_name_map: Dict[str, ClassNode] = {}
         simple_name_map: Dict[str, List[str]] = {}
 
@@ -38,24 +37,17 @@ class DataGenerator:
                     if simple_name not in simple_name_map:
                         simple_name_map[simple_name] = []
                     simple_name_map[simple_name].append(qualified_name)
-        # --- End Change ---
 
         for node in listOfClassNodes:
-            # Pass maps to dumpClass
             self.dumpClass(node, qualified_name_map, simple_name_map)
 
         self.graphData.add_blank_classes()
         self.graphData.remove_duplicates()
 
-        json_output = (
-            self.graphData.to_json()
-        )  # This will now include the analysisSourcePath
+        json_output = self.graphData.to_json()
 
-        sanitized_path_prefix = self._sanitize_path_for_filename(
-            targetPath
-        )  # This now uses the full path
-        date_time = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
-        filePath = f"static/out/{sanitized_path_prefix}_{date_time}.json"
+        # Use base_filename for JSON
+        filePath = f"static/out/{base_filename}.json"
 
         self.writeToFile(filePath, json_output)
 
@@ -64,7 +56,6 @@ class DataGenerator:
         if not path:
             return "analysis"
 
-        # --- Start Change: Process full path ---
         # Replace drive colon first (e.g., C:)
         sanitized = path.replace(":", "_")
         # Replace path separators with underscores
@@ -77,7 +68,6 @@ class DataGenerator:
         sanitized = re.sub(r"_+", "_", sanitized)
         # Remove leading/trailing underscores
         sanitized = sanitized.strip("_")
-        # --- End Change ---
 
         # Limit length if necessary (e.g., 100 chars for full path)
         max_len = 100
@@ -207,7 +197,7 @@ class DataGenerator:
                         target_name_original, classInfo.package
                     )
 
-                # --- Start Change: Resolve target against known classes ---
+                # Resolve target against known classes
                 resolved_target = target_name_full  # Start with the potentially qualified/unqualified name
 
                 if target_name_full not in qualified_name_map:
@@ -219,7 +209,6 @@ class DataGenerator:
                         if len(possible_matches) == 1:
                             # Found a unique qualified match, use it!
                             resolved_target = possible_matches[0]
-                # --- End Change ---
 
                 should_ignore = False
                 if self._uml_drawer_for_filtering:
