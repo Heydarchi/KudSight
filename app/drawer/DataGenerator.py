@@ -170,11 +170,6 @@ class DataGenerator:
         simple_name_map: Dict[str, List[str]],
     ):
         qualified_name = self._get_qualified_name(classInfo)
-        print(f"DataGenerator dumping: {qualified_name}")
-        # print(f"  - Simple Name: {classInfo.name}") # Keep simple name if needed
-        print(f"  - Package: {classInfo.package}")
-        print(f"  - Variables: {classInfo.variables}")
-        print(f"  - Relations: {classInfo.relations}")
 
         classData = ClassData()
         classData.package = classInfo.package
@@ -195,15 +190,9 @@ class DataGenerator:
 
         self.graphData.nodes.append(classData)
 
-        print(f"  - Processing relations for {classData.id}:")  # ID is now qualified
         for relation in classInfo.relations:
             try:
                 target_name_original = relation.name  # Keep original name from relation
-                # --- Start Debug ---
-                print(
-                    f"    - Original Relation: {relation.relationship.name} -> '{target_name_original}'"
-                )
-                # --- End Debug ---
                 target_name_full = target_name_original  # Default target for link
 
                 is_inheritance = relation.relationship in [
@@ -217,11 +206,6 @@ class DataGenerator:
                     target_name_full = self._get_qualified_name_from_string(
                         target_name_original, classInfo.package
                     )
-                    # --- Start Debug ---
-                    if target_name_full != target_name_original:
-                        print(f"      - Qualified/Std Stripped: '{target_name_full}'")
-                    # --- End Debug ---
-                # Else (unqualified inheritance): target_name_full remains the original unqualified name
 
                 # --- Start Change: Resolve target against known classes ---
                 resolved_target = target_name_full  # Start with the potentially qualified/unqualified name
@@ -235,33 +219,6 @@ class DataGenerator:
                         if len(possible_matches) == 1:
                             # Found a unique qualified match, use it!
                             resolved_target = possible_matches[0]
-                            # --- Start Debug ---
-                            print(
-                                f"      - Resolved unqualified '{target_name_full}' to '{resolved_target}'"
-                            )
-                            # --- End Debug ---
-                        elif len(possible_matches) > 1:
-                            # Ambiguous match, keep original target, let blank node handle it
-                            # --- Start Debug ---
-                            print(
-                                f"      - Ambiguous match for unqualified '{target_name_full}', keeping as is."
-                            )
-                            # --- End Debug ---
-                        # Else (len == 0): No match found, likely a template param or external type, keep original target
-                        # --- Start Debug ---
-                        else:
-                            print(
-                                f"      - Unqualified '{target_name_full}' not found in simple map."
-                            )
-                        # --- End Debug ---
-                # Else (target_name_full is in qualified_name_map): Already resolved, use it.
-                # --- Start Debug ---
-                else:
-                    print(
-                        f"      - Target '{target_name_full}' found directly in qualified map."
-                    )
-                # --- End Debug ---
-
                 # --- End Change ---
 
                 should_ignore = False
@@ -270,31 +227,18 @@ class DataGenerator:
                     should_ignore = self._uml_drawer_for_filtering._should_ignore_type(
                         resolved_target
                     )
-                    # --- Start Debug ---
-                    if should_ignore:
-                        print(f"      - Ignoring type: '{resolved_target}'")
-                    # --- End Debug ---
 
                 if not should_ignore:
                     dependency = Dependency()
                     dependency.source = classData.id  # Source is qualified name
-                    # --- Start Change: Use resolved target ---
                     dependency.target = resolved_target  # Use the resolved name
-                    # --- End Change ---
                     dependency.relation = relation.relationship.name.lower()
-                    # --- Start Debug ---
-                    print(
-                        f"    -> Adding Link: {dependency.source} -> {dependency.target} ({dependency.relation})"
-                    )
-                    # --- End Debug ---
                     self.graphData.links.append(dependency)
-                # --- Start Debug ---
-                # else: # Already printed above
-                #    print(f"    - Skipping ignored/primitive relation: {classData.id} -> {resolved_target} ({relation.relationship.name.lower()})")
-                # --- End Debug ---
 
             except AttributeError as e:
-                print(f"    - Error processing relation {relation}: {e}")
+                print(
+                    f"    - Error processing relation {relation}: {e}"
+                )  # Keep error log
 
     def writeToFile(self, fileName, json_output):
         with open(fileName, "w") as f:

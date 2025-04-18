@@ -67,7 +67,6 @@ class GraphData:
                 undefined_node_id and undefined_node_id not in defined_nodes_raw
             ):  # Check against raw IDs
                 # --- End Change ---
-                print(f"Adding blank node for undefined reference: {undefined_node_id}")
                 # Extract package and simple ID heuristically if possible, otherwise leave package blank
                 package_guess = ""
                 simple_id_guess = undefined_node_id
@@ -96,8 +95,6 @@ class GraphData:
             if node_id not in unique_nodes:
                 unique_nodes[node_id] = node
                 kept_nodes.append(node)
-            else:
-                print(f"Duplicate node found and removed: {node.id}")
         self.nodes = kept_nodes
 
         # Remove duplicate links based on raw 'source', 'target', 'relation'
@@ -112,10 +109,6 @@ class GraphData:
             if link_id_tuple not in unique_links:
                 unique_links.add(link_id_tuple)
                 filtered_links.append(link)
-            else:
-                print(
-                    f"Duplicate link found and removed: {link.source} -> {link.target} ({link.relation})"
-                )
         self.links = filtered_links
 
     def to_json(self) -> str:

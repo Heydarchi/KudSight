@@ -88,5 +88,4 @@ export function clearSelection() {
     if (itemDetails) {
         clearDetails(); // Use the reverted clearDetails function
     }
-    console.log("Selection cleared.");
 }

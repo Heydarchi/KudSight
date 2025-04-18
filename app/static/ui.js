@@ -1,9 +1,7 @@
 // === ui.js ===
 import * as THREE from 'https://esm.sh/three';
 import { loadGraphData, Graph, originalGraphData } from './graph.js';
-// Start Change: Import clearSelection
 import { getSelectedNodeIds, clearSelection } from './panel.js';
-// End Change
 
 let currentGraphFile = 'data.json'; // Keep track of the currently loaded file
 let saveTimeout;
@@ -98,9 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const jsonSelect = document.getElementById('graphDataFile'); // Use new ID
   const focusSelectedBtn = document.getElementById('focusSelectedBtn');
   const showAllBtn = document.getElementById('showAllBtn');
-  // Start Change: Get clear selection button
   const clearSelectionBtn = document.getElementById('clearSelectionBtn');
-  // End Change
 
   analyzeBtn.addEventListener('click', () => {
     const folderPath = folderInput.value.trim();
@@ -197,7 +193,6 @@ document.addEventListener('DOMContentLoaded', () => {
   focusSelectedBtn.addEventListener('click', () => {
     const selectedIds = getSelectedNodeIds(); // Get array of selected IDs
 
-    // --- Start Revert to Client-Side Filtering ---
     if (selectedIds.length === 0 || !originalGraphData) {
         alert("Please select one or more items from the list first, or ensure graph data is loaded.");
         return;
@@ -206,37 +201,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectedIdsSet = new Set(selectedIds); // Use a Set for efficient lookup
     const linksToShow = [];
 
-    console.log("Client-Side Filtering - Selected IDs Set:", selectedIdsSet);
-    console.log("Client-Side Filtering - Checking links in original data (count):", originalGraphData.links.length);
-
     // Filter links: Keep only those where BOTH source and target are selected
-    originalGraphData.links.forEach((link, index) => {
-        // --- Start Change: Access .id property of source/target objects ---
-        // Ensure link.source and link.target are objects with an 'id' property
+    originalGraphData.links.forEach((link) => {
         const sourceId = typeof link.source === 'object' && link.source !== null ? link.source.id : link.source;
         const targetId = typeof link.target === 'object' && link.target !== null ? link.target.id : link.target;
-        // --- End Change ---
 
         const sourceSelected = selectedIdsSet.has(sourceId);
         const targetSelected = selectedIdsSet.has(targetId);
 
-        // Log the check for debugging
-        console.log(
-            `Client-Side Filtering - Link[${index}]: Checking "${sourceId}" (type: ${typeof sourceId}) -> "${targetId}" (type: ${typeof targetId}). ` +
-            `Source in set? ${sourceSelected}. Target in set? ${targetSelected}`
-        );
-
         if (sourceSelected && targetSelected) {
-            console.log(`Client-Side Filtering - Adding link:`, link);
             linksToShow.push(link);
         }
     });
 
     // Filter nodes: Keep only the selected nodes
     const filteredNodes = originalGraphData.nodes.filter(node => selectedIdsSet.has(node.id));
-
-    console.log("Client-Side Filtering - Filtered Nodes:", filteredNodes);
-    console.log("Client-Side Filtering - Filtered Links:", linksToShow);
 
     // Create the filtered data object
     const filteredData = {
@@ -245,28 +224,21 @@ document.addEventListener('DOMContentLoaded', () => {
         analysisSourcePath: originalGraphData.analysisSourcePath // Keep original path info
     };
 
-    console.log(`Client-Side Filtering - Focusing on ${selectedIds.length} selected node(s) and links between them.`);
     Graph.graphData(filteredData); // Update graph with the filtered data
-    // --- End Revert to Client-Side Filtering ---
   });
 
   showAllBtn.addEventListener('click', () => {
     if (originalGraphData) {
-        console.log("Showing all nodes and links.");
         Graph.graphData(originalGraphData); // Reload original full data
-        // Start Change: Clear selection when showing all
         clearSelection();
-        // End Change
     } else {
         alert("No graph data loaded to show.");
     }
   });
 
-  // Start Change: Add listener for Clear Selection button
   clearSelectionBtn.addEventListener('click', () => {
     clearSelection();
   });
-  // End Change
 
   // --- Initial Load ---
   loadJsonFileList(); // Load file list and potentially the first graph on page load
