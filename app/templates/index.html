@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>3D Class-Module Graph</title>
+  <title>KudSight - Code Visualization</title>
   <link rel="stylesheet" href="/static/style.css">
   <script src="//cdn.jsdelivr.net/npm/3d-force-graph"></script>
 </head>
@@ -13,10 +13,19 @@
     <input type="text" id="folderPath" placeholder="Enter full folder path..." />
     <button id="analyzeBtn" class="btn">Analyze</button>
     <span id="status"></span>
+    <!-- Start Change: Add View Mode Switcher -->
+    <div id="view-mode-switcher">
+      <label>View:</label>
+      <input type="radio" id="viewMode3D" name="viewMode" value="3d" checked>
+      <label for="viewMode3D">3D Graph</label>
+      <input type="radio" id="viewModeUML" name="viewMode" value="uml">
+      <label for="viewModeUML">UML Diagram</label>
+    </div>
+    <!-- End Change -->
     <div id="cameraInfo"></div>
   </div>
 
-  <!-- Main Layout: Side Panel + Graph -->
+  <!-- Main Layout: Side Panel + Content Area -->
   <div id="main-container">
 
     <!-- Left Side Info Panel -->
@@ -25,7 +34,7 @@
         <label >KudSight Version: {{ version }}</label>
         <label ></label>
         <label ></label>
-        <label for="graphDataFile">Graph Data File:</label>
+        <label for="graphDataFile">Analysis Result:</label>
         <select id="graphDataFile"></select>
         <button id="refreshButton" class="btn">⟳ Refresh</button>
       </div>
@@ -55,10 +64,19 @@
     </div>
     
 
-    <!-- Graph Container (80% width) -->
-    <div id="graph-container">
-      <div id="3d-graph"></div>
+    <!-- Content Area (Graph or Image) -->
+    <div id="content-area">
+      <!-- Graph Container (Initially visible) -->
+      <div id="graph-container">
+        <div id="3d-graph"></div>
+      </div>
+      <!-- Start Change: Add UML Image Container (Initially hidden) -->
+      <div id="uml-image-container" class="hidden">
+        <img id="uml-image" src="" alt="UML Diagram" />
+      </div>
+      <!-- End Change -->
     </div>
+
   </div>
 
   <!-- Right Camera Control Panel -->

@@ -53,7 +53,7 @@ cd KudSight
 2. **Install Python and dependencies**:
 
 ```bash
-sudo apt install python3 python-is-python3 python3-venv -y
+sudo apt install python3 python-is-python3 python3-venv default-jre graphviz -y
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt

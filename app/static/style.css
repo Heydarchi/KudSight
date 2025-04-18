@@ -15,7 +15,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 15px; /* Slightly increase gap */
   z-index: 10;
   border-bottom: 1px solid #333;
 }
@@ -42,6 +42,28 @@ input[type="text"] {
 .btn:hover {
   background: #444;
 }
+
+/* Start Change: View Mode Switcher Styles */
+#view-mode-switcher {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 20px; /* Add some space */
+  background-color: #2a2a2a;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+#view-mode-switcher label {
+  margin-right: 5px;
+  font-size: 13px;
+  color: #ccc;
+}
+
+#view-mode-switcher input[type="radio"] {
+  margin-right: 2px;
+}
+/* End Change */
 
 #cameraInfo {
   font-size: 12px;
@@ -71,6 +93,8 @@ input[type="text"] {
   color: #ccc;
   position: relative;
   z-index: 1000;
+  height: 100%; /* Ensure panel takes full height */
+  box-sizing: border-box; /* Include padding in height */
 }
 
 #json-select-container {
@@ -190,23 +214,55 @@ input[type="text"] {
   overflow-y: auto;
 }
 
+/* Start Change: Content Area */
+#content-area {
+  flex-grow: 1; /* Take remaining width */
+  position: relative; /* Needed for absolute positioning inside */
+  overflow: hidden; /* Hide overflow */
+  background-color: #111; /* Match body background */
+}
+/* End Change */
+
 /* Graph container */
 #graph-container {
-  width: 80%;
-  position: relative;
+  width: 100%;
+  height: 100%;
+  position: absolute; /* Position within content-area */
+  top: 0;
+  left: 0;
   z-index: 0;
 }
 
 #3d-graph {
   width: 100%;
   height: 100%;
-  position: relative;
 }
+
+/* Start Change: UML Image Container */
+#uml-image-container {
+  width: 100%;
+  height: 100%;
+  position: absolute; /* Position within content-area */
+  top: 0;
+  left: 0;
+  overflow: auto; /* Allow scrolling for large images */
+  text-align: center; /* Center the image */
+  background-color: #222; /* Slightly different background */
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+#uml-image {
+  max-width: 100%;
+  height: auto; /* Maintain aspect ratio */
+  display: inline-block; /* Needed for centering */
+}
+/* End Change */
 
 /* Right floating panel */
 #right-panel {
   position: fixed;
-  top: 60px;
+  top: 70px; /* Adjust based on top bar height */
   right: 10px;
   width: 200px;
   background: rgba(30, 30, 30, 0.95);
@@ -229,3 +285,9 @@ input[type="text"] {
   width: 100%;
   margin-bottom: 5px;
 }
+
+/* Start Change: Hidden Class */
+.hidden {
+  display: none !important; /* Use !important to override other display properties */
+}
+/* End Change */

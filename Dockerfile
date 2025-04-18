@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Install system-level packages
 RUN apt-get update && \
-    apt-get install -y git  && \
+    apt-get install -y git default-jre graphviz   && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy requirements early to leverage Docker cache

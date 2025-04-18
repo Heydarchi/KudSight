@@ -3,8 +3,17 @@ import * as THREE from 'https://esm.sh/three';
 import { loadGraphData, Graph, originalGraphData } from './graph.js';
 import { getSelectedNodeIds, clearSelection } from './panel.js';
 
-let currentGraphFile = 'data.json'; // Keep track of the currently loaded file
+let currentGraphFile = null; // Start with null
+let currentViewMode = '3d'; // Default view mode
 let saveTimeout;
+
+// --- Get references to new elements ---
+const viewMode3DRadio = document.getElementById('viewMode3D');
+const viewModeUMLRadio = document.getElementById('viewModeUML');
+const graphContainer = document.getElementById('graph-container');
+const umlImageContainer = document.getElementById('uml-image-container');
+const umlImage = document.getElementById('uml-image');
+const rightPanel = document.getElementById('right-panel'); // Camera controls
 
 export function setCurrentGraphFile(filename) {
   currentGraphFile = filename;
@@ -56,20 +65,101 @@ function updateGraphDataDropdown(files) {
   }
 }
 
+// --- Function to set the view mode ---
+function setViewMode(mode) {
+  currentViewMode = mode;
+  if (mode === '3d') {
+    graphContainer.classList.remove('hidden');
+    rightPanel.classList.remove('hidden'); // Show camera controls
+    umlImageContainer.classList.add('hidden');
+    // If graph data exists, ensure it's rendered
+    if (originalGraphData) {
+        Graph.graphData(Graph.graphData()); // Re-trigger rendering if needed
+    } else if (currentGraphFile) {
+        loadContentForFile(currentGraphFile); // Load graph if file selected but no data yet
+    }
+  } else if (mode === 'uml') {
+    graphContainer.classList.add('hidden');
+    rightPanel.classList.add('hidden'); // Hide camera controls
+    umlImageContainer.classList.remove('hidden');
+    // Load the UML image if a file is selected
+    if (currentGraphFile) {
+        loadContentForFile(currentGraphFile);
+    } else {
+        umlImage.src = ''; // Clear image if no file selected
+        umlImage.alt = 'Select an analysis result to view UML diagram.';
+    }
+  }
+}
+
+// --- Function to load content based on mode and file ---
+function loadContentForFile(filename) {
+    setCurrentGraphFile(filename); // Update the current file tracking
+
+    if (currentViewMode === '3d') {
+        // Load 3D graph data (uses the existing loadGraphData function)
+        loadGraphData(filename);
+    } else if (currentViewMode === 'uml') {
+        // Construct PNG filename and load image
+        const baseName = filename.replace(/\.json$/, '');
+        const pngFilename = baseName + '.png'; // Assumes .png is generated alongside .puml
+        const pngPath = '/out/' + pngFilename;
+
+        // Check if image exists before setting src to avoid 404 console errors (optional but cleaner)
+        fetch(pngPath, { method: 'HEAD' })
+            .then(res => {
+                if (res.ok) {
+                    umlImage.src = pngPath;
+                    umlImage.alt = `UML Diagram for ${filename}`;
+                } else {
+                    umlImage.src = '';
+                    umlImage.alt = `UML Diagram PNG not found for ${filename} (Expected: ${pngFilename})`;
+                }
+            })
+            .catch(err => {
+                console.error("Error checking/loading UML image:", err);
+                umlImage.src = '';
+                umlImage.alt = 'Error loading UML diagram.';
+            });
+        // Also ensure the panel is updated with metadata from the JSON
+        // Fetch JSON just for panel setup if needed, but avoid full graph load
+        fetch('/out/' + filename)
+            .then(res => res.json())
+            .then(data => {
+                if (data) setupPanel(data); // Update panel even in UML mode
+            }).catch(err => console.error("Error loading JSON for panel in UML mode:", err));
+    }
+}
+
 // --- Function to fetch and update file list ---
 function loadJsonFileList() {
   fetch('/list-json')
     .then(response => response.json())
     .then(files => {
-      // Use the new update function
       updateGraphDataDropdown(files);
-      // After updating, if there's a value, load it (for initial load)
       const jsonSelect = document.getElementById('graphDataFile');
+      // Load the content for the initially selected file (respecting current view mode)
       if (jsonSelect.value) {
-        loadGraphData(jsonSelect.value);
+        loadContentForFile(jsonSelect.value);
+      } else {
+        // No files available, clear content areas
+        Graph.graphData({ nodes: [], links: [] }); // Clear graph
+        setupPanel({ nodes: [], links: [] }); // Clear panel
+        umlImage.src = '';
+        umlImage.alt = 'No analysis results found.';
+        setCurrentGraphFile(null);
       }
     })
-    .catch(err => console.error('Error fetching JSON file list:', err));
+    .catch(err => {
+        console.error('Error fetching JSON file list:', err);
+        // Handle error state in UI
+        updateGraphDataDropdown([]);
+        Graph.graphData({ nodes: [], links: [] });
+        setupPanel({ nodes: [], links: [] });
+        umlImage.src = '';
+        umlImage.alt = 'Error loading analysis results.';
+        setCurrentGraphFile(null);
+    });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -121,13 +211,11 @@ document.addEventListener('DOMContentLoaded', () => {
       .then(res => {
         if (res.status === 'ok') {
           status.textContent = 'Analysis complete. Updating file list...';
-          // --- Start Change: Update dropdown from analyze response ---
           updateGraphDataDropdown(res.files);
           // Automatically load the newest file (first in the sorted list)
           if (res.files && res.files.length > 0) {
-            loadGraphData(res.files[0]);
+            loadContentForFile(res.files[0]);
           }
-          // --- End Change ---
           status.textContent = ''; // Clear status
         } else {
           status.textContent = `Error: ${res.message}`;
@@ -185,12 +273,13 @@ document.addEventListener('DOMContentLoaded', () => {
   jsonSelect.addEventListener('change', () => {
     const selectedFile = jsonSelect.value;
     if (selectedFile) {
-      loadGraphData(selectedFile); // Load selected graph
+      loadContentForFile(selectedFile);
     }
   });
 
   // --- Filter Button Listeners ---
   focusSelectedBtn.addEventListener('click', () => {
+    if (currentViewMode !== '3d') return; // Only works in 3D mode
     const selectedIds = getSelectedNodeIds(); // Get array of selected IDs
 
     if (selectedIds.length === 0 || !originalGraphData) {
@@ -228,6 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   showAllBtn.addEventListener('click', () => {
+    if (currentViewMode !== '3d') return; // Only works in 3D mode
     if (originalGraphData) {
         Graph.graphData(originalGraphData); // Reload original full data
         clearSelection();
@@ -240,6 +330,20 @@ document.addEventListener('DOMContentLoaded', () => {
     clearSelection();
   });
 
+  // --- View Mode Change Listeners ---
+  viewMode3DRadio.addEventListener('change', () => {
+    if (viewMode3DRadio.checked) {
+      setViewMode('3d');
+    }
+  });
+
+  viewModeUMLRadio.addEventListener('change', () => {
+    if (viewModeUMLRadio.checked) {
+      setViewMode('uml');
+    }
+  });
+
   // --- Initial Load ---
+  setViewMode(currentViewMode); // Set initial view based on default
   loadJsonFileList(); // Load file list and potentially the first graph on page load
 });

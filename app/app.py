@@ -12,7 +12,7 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULT_FOLDER, exist_ok=True)
 
-APP_VERSION = "V0.4.1-beta"
+APP_VERSION = "V0.5.0-beta"
 
 
 @app.route("/")

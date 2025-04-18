@@ -1,5 +1,5 @@
 #!/bin/bash
-sudo apt install git python3.10 python-is-python3 python3-pip -y
+sudo apt install git python3.10 python-is-python3 python3-pip  default-jre graphviz  -y
 
 python -m pip install --upgrade pip 
 
