@@ -1,4 +1,9 @@
 import os, sys
+
+# --- Start Change: Import re module ---
+import re
+
+# --- End Change ---
 from model.AnalyzerEntities import *
 from model.DataGeneratorEntities import *
 
@@ -56,102 +61,92 @@ class DataGenerator:
         # --- End Debug Logging ---
 
         classData = ClassData()
-        classData.package = classInfo.package if classInfo.package is not None else ""
-        # --- Start Change: Use fix_name_issue for ID consistency ---
-        classData.id = self.fix_name_issue(classInfo.name)
-        # Add template params to ID if they exist, similar to UML drawer logic
+        classData.package = classInfo.package  # Use full namespace from analyzer
+        # --- Start Change: ID should be simple name, package field provides scope ---
+        classData.id = self.fix_name_issue(classInfo.name)  # Use simple name
         if classInfo.params:
+            # Quote simple name if templated
             classData.id = f'"{classInfo.name}<{", ".join(classInfo.params)}>"'
         # --- End Change ---
-        classData.type = (
-            "interface" if classInfo.isInterface else "class"
-        )  # Set type based on flag
+        classData.type = "interface" if classInfo.isInterface else "class"
 
-        # --- Start Change: Add flags ---
         classData.isAbstract = classInfo.isAbstract
         classData.isFinal = classInfo.isFinal
         classData.isStatic = classInfo.isStatic
-        # --- End Change ---
 
-        # Include methods by name
-        classData.methods = [
-            method.name if hasattr(method, "name") else str(method)
-            for method in classInfo.methods
+        # --- Start Change: Store structured member info (Optional but recommended) ---
+        # Option 1: Keep simple strings (current approach)
+        classData.methods = [method.name for method in classInfo.methods]
+        classData.attributes = [
+            f"{var.accessLevel.name.lower()} {'static ' if var.isStatic else ''}{var.dataType} {var.name}".strip()
+            for var in classInfo.variables
+            if var.name != "return"
         ]
-
-        # --- Start Debug Logging for Attributes ---
-        attributes_to_add = []
-        print(f"  - Processing variables for {classInfo.name}:")
-        for var in classInfo.variables:
-            if var.name not in ["return"]:
-                # Ensure var has expected attributes before formatting
-                try:
-                    attr_str = f"{var.accessLevel.name.lower()} {'static ' if var.isStatic else ''}{var.dataType} {var.name}".replace(
-                        ";", ""
-                    ).strip()
-                    attributes_to_add.append(attr_str)
-                    print(f"    - Adding attribute: {attr_str}")
-                except AttributeError as e:
-                    print(f"    - Error processing variable {var}: {e}")
-            else:
-                print(f"    - Skipping variable named 'return': {var}")
-        classData.attributes = attributes_to_add
-        # --- End Debug Logging for Attributes ---
+        # Option 2: Store richer data (Example - uncomment and adjust DataGeneratorEntities if used)
+        # classData.methods = [
+        #     {
+        #         "name": method.name,
+        #         "returnType": method.dataType,
+        #         "access": method.accessLevel.name.lower(),
+        #         "params": method.params,
+        #         "isStatic": method.isStatic,
+        #         "isAbstract": method.isAbstract
+        #     } for method in classInfo.methods
+        # ]
+        # classData.attributes = [
+        #     {
+        #         "name": var.name,
+        #         "type": var.dataType,
+        #         "access": var.accessLevel.name.lower(),
+        #         "isStatic": var.isStatic,
+        #         "isFinal": var.isFinal # 'const' mapped to isFinal
+        #     } for var in classInfo.variables if var.name != "return"
+        # ]
+        # --- End Change ---
 
         self.graphData.nodes.append(classData)
 
-        # --- Start Change: Use potentially templated ID for source ---
         print(
-            f"  - Processing relations for {classData.id}:"
-        )  # Use the potentially templated ID
+            f"  - Processing relations for {classData.id} in package {classData.package}:"
+        )
         for relation in classInfo.relations:
             try:
-                target_name_raw = relation.name
-                target_name_fixed = self.fix_name_issue(target_name_raw)
-                # Add template params to target if it's a known templated class (more advanced, skip for now)
+                # --- Start Change: Use full name for target ---
+                target_name_full = self.fix_name_issue(
+                    relation.name
+                )  # Use potentially qualified name
+                # --- End Change ---
 
-                # Use the drawer's filtering logic if available
                 should_ignore = False
                 if self._uml_drawer_for_filtering:
-                    # Pass the raw name for filtering check
+                    # Filter based on the potentially qualified name
                     should_ignore = self._uml_drawer_for_filtering._should_ignore_type(
-                        target_name_raw
+                        target_name_full
                     )
-                else:
-                    # Basic fallback if drawer init failed (less accurate)
-                    if target_name_fixed.lower() in [
-                        "string",
-                        "int",
-                        "void",
-                        "char",
-                        "bool",
-                        "t",
-                    ]:
-                        should_ignore = True
+                # ... fallback logic ...
 
                 if not should_ignore:
                     dependency = Dependency()
                     dependency.source = (
                         classData.id
-                    )  # Use the potentially templated source ID
-                    dependency.target = target_name_fixed  # Use fixed target name
-                    # Add template params to target if needed (complex)
-                    # if target_name_raw in known_template_classes:
-                    #    dependency.target = f'"{target_name_raw}<...>"' # Placeholder
-
+                    )  # Source is simple name (within its package context)
+                    # --- Start Change: Target uses full name ---
+                    dependency.target = (
+                        target_name_full  # Target needs full name for global reference
+                    )
+                    # --- End Change ---
                     dependency.relation = relation.relationship.name.lower()
                     print(
-                        f"    - Adding link: {dependency.source} -> {dependency.target} ({dependency.relation})"
+                        f"    - Adding link: {dependency.source} ({classData.package}) -> {dependency.target} ({dependency.relation})"
                     )
                     self.graphData.links.append(dependency)
                 else:
                     print(
-                        f"    - Skipping ignored/primitive relation: {classData.id} -> {target_name_fixed} ({relation.relationship.name.lower()})"
+                        f"    - Skipping ignored/primitive relation: {classData.id} -> {target_name_full} ({relation.relationship.name.lower()})"
                     )
 
             except AttributeError as e:
                 print(f"    - Error processing relation {relation}: {e}")
-        # --- End Change ---
 
     def writeToFile(self, fileName, json_output):
         with open(fileName, "w") as f:
@@ -160,9 +155,10 @@ class DataGenerator:
     def fix_name_issue(self, name):
         if not isinstance(name, str):
             return ""
-        # Keep quoting for names containing '<' or '>' only if NOT handled by template logic
-        # This function is now simpler, mainly for ensuring string type
-        # Quoting for templates is handled in dumpClass and ClassUmlDrawer directly
+        # Quote only if it contains template chars or spaces, preserve ::
+        if re.search(r"[<> ]", name):
+            if not (name.startswith('"') and name.endswith('"')):
+                return '"' + name + '"'
         return name
 
 

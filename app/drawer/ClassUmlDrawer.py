@@ -163,7 +163,9 @@ class ClassUmlDrawer:
         nodes_by_name = {node.name: node for node in listOfClassNodes}
 
         for node in listOfClassNodes:
-            package_name = node.package if node.package else "default"
+            package_name = (
+                node.package.replace("::", ".") if node.package else "default"
+            )
             packages[package_name].append(node)
 
         for package_name, classes_in_package in sorted(packages.items()):
@@ -194,14 +196,10 @@ class ClassUmlDrawer:
     def dump_single_class_definition(self, classInfo: ClassNode) -> list[str]:
         definition = []
         class_type = "interface" if classInfo.isInterface else "class"
-        # --- Start Change: Format name with template params ---
         name = self.fix_name_issue(classInfo.name)
         if classInfo.params:
-            # Quote the name if it contains template parameters
             name = f'"{name}<{", ".join(classInfo.params)}>"'
-        # --- End Change ---
 
-        # --- Start Change: Add {abstract} stereotype ---
         stereotype_parts = []
         if classInfo.isAbstract:
             stereotype_parts.append("abstract")
@@ -210,7 +208,6 @@ class ClassUmlDrawer:
         if classInfo.isStatic:
             stereotype_parts.append("static")
         stereotype = f"<< { ' '.join(stereotype_parts) } >>" if stereotype_parts else ""
-        # --- End Change ---
 
         bases = []
         for rel in classInfo.relations:
@@ -218,8 +215,9 @@ class ClassUmlDrawer:
                 InheritanceEnum.EXTENDED,
                 InheritanceEnum.IMPLEMENTED,
             ]:
-                if not self._should_ignore_type(rel.name):
-                    bases.append(self.fix_name_issue(rel.name))
+                base_name_full = self.fix_name_issue(rel.name)
+                if not self._should_ignore_type(base_name_full):
+                    bases.append(base_name_full)
 
         extends_clause = f"extends {', '.join(bases)}" if bases else ""
 
@@ -230,24 +228,19 @@ class ClassUmlDrawer:
             static_final = f"{'{static} ' if var.isStatic else ''}{'{final} ' if var.isFinal else ''}".strip()
             if static_final:
                 static_final = f"{{{static_final}}} "
-            definition.append(
-                f"  {access} {static_final}{self.fix_name_issue(var.dataType)} {var.name}"
-            )
+            var_type_full = self.fix_name_issue(var.dataType)
+            definition.append(f"  {access} {static_final}{var_type_full} {var.name}")
 
         for method in sorted(classInfo.methods, key=lambda x: x.name):
             access = self._get_access_symbol(method.accessLevel)
-            # --- Start Change: Use isAbstract for method stereotype ---
             stereotype_m_parts = []
             if method.isStatic:
                 stereotype_m_parts.append("static")
             if method.isAbstract:
                 stereotype_m_parts.append("abstract")
-            # Consider adding isOverridden here if needed for other languages/cases
-            # if method.isOverridden: stereotype_m_parts.append("overridden") # Example
             static_override = (
                 f"{{ { ' '.join(stereotype_m_parts) } }}" if stereotype_m_parts else ""
             )
-            # --- End Change ---
             params_str = ", ".join(self.fix_name_issue(p) for p in method.params)
             return_type = (
                 self.fix_name_issue(method.dataType) if method.dataType else ""
@@ -270,14 +263,15 @@ class ClassUmlDrawer:
     ) -> list[str]:
         plantUmlList = []
         source_name = self.fix_name_issue(classInfo.name)
+        if classInfo.params:
+            source_name = f'"{source_name}<{", ".join(classInfo.params)}>"'
 
         processed_targets = set()
 
         for relation in classInfo.relations:
-            target_name_raw = relation.name
-            target_name_fixed = self.fix_name_issue(target_name_raw)
+            target_name_full = self.fix_name_issue(relation.name)
 
-            if not self._should_ignore_type(target_name_raw):
+            if not self._should_ignore_type(target_name_full):
                 arrow = ""
                 if relation.relationship == InheritanceEnum.DEPENDED:
                     arrow = ".....>"
@@ -287,11 +281,9 @@ class ClassUmlDrawer:
                     arrow = "--|>"
 
                 if arrow:
-                    link_tuple = (source_name, arrow, target_name_fixed)
+                    link_tuple = (source_name, arrow, target_name_full)
                     if link_tuple not in processed_targets:
-                        plantUmlList.append(
-                            f"{source_name} {arrow} {target_name_fixed}"
-                        )
+                        plantUmlList.append(f"{source_name} {arrow} {target_name_full}")
                         processed_targets.add(link_tuple)
 
         return plantUmlList
@@ -349,14 +341,11 @@ class ClassUmlDrawer:
             return False
 
     def fix_name_issue(self, name):
-        # --- Start Change: Handle potential None input ---
         if not isinstance(name, str):
             return ""
-        # --- End Change ---
-        # --- Start Change: No need to quote template names here, handled in dump_single_class_definition ---
-        # if ">" in name or "<" in name:
-        #     return '"' + name + '"'
-        # --- End Change ---
+        if re.search(r"[<> ]", name):
+            if not (name.startswith('"') and name.endswith('"')):
+                return '"' + name + '"'
         return name
 
 
