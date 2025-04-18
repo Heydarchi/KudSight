@@ -66,7 +66,6 @@ class CppClassAnalyzer(AbstractAnalyzer):
                     fileContent[abs_match_start:]
                 )
                 if classBoundary <= 0:
-                    # Advance past the header if boundary not found
                     current_search_pos = abs_match_end
                     continue
 
@@ -79,7 +78,6 @@ class CppClassAnalyzer(AbstractAnalyzer):
 
                 classInfo.name = match.group(4).strip() if match.group(4) else None
                 if not classInfo.name:
-                    # If name extraction failed, skip and advance past header
                     current_search_pos = abs_match_end
                     continue
 
@@ -116,7 +114,6 @@ class CppClassAnalyzer(AbstractAnalyzer):
 
                 listOfClasses.append(classInfo)
 
-                # Advance search position past the current class definition
                 current_search_pos = abs_match_start + classBoundary
 
         return listOfClasses
@@ -137,7 +134,6 @@ class CppClassAnalyzer(AbstractAnalyzer):
 
     def extract_class_inheritances(self, inputStr):
         inheritance = []
-
         match = re.search(
             r"class\s+[a-zA-Z_][a-zA-Z0-9_]*\s*(?:final)?\s*:\s*([^;{]+)", inputStr
         )
@@ -169,7 +165,6 @@ class CppClassAnalyzer(AbstractAnalyzer):
         return classInfo
 
     def extract_full_package_name(self, inputStr: str) -> str:
-        """Extracts the last declared namespace in the file content."""
         namespace_matches = list(re.finditer(self.patternPackageName, inputStr))
         if not namespace_matches:
             return ""
@@ -235,9 +230,7 @@ class CppClassAnalyzer(AbstractAnalyzer):
         return inheritance_list
 
     def _get_cpp_primitives_and_common(self):
-        # Add common STL types here
         return {
-            # Primitives
             "void",
             "bool",
             "char",
@@ -256,7 +249,6 @@ class CppClassAnalyzer(AbstractAnalyzer):
             "ptrdiff_t",
             "nullptr_t",
             "auto",
-            # Common STL / Standard types (case-sensitive)
             "string",
             "wstring",
             "u16string",
@@ -280,7 +272,6 @@ class CppClassAnalyzer(AbstractAnalyzer):
             "optional",
             "variant",
             "any",
-            # Add others as needed
         }
 
     def _get_type_cleaner(self):
@@ -339,6 +330,5 @@ class CppClassAnalyzer(AbstractAnalyzer):
 
 
 if __name__ == "__main__":
-    print(sys.argv)
     classAnalyzer = CppClassAnalyzer()
     classAnalyzer.analyze(sys.argv[1], FileTypeEnum.CPP)
