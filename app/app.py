@@ -23,7 +23,9 @@ def index():
 def upload_folder():
     folder_path = request.form.get("folderPath")
 
+    print(f"Current app path: {os.path.abspath(os.getcwd())}")
     if not os.path.exists(folder_path):
+        print(f"Path does not exist: {folder_path}")
         return jsonify({"status": "error", "message": "Path does not exist."})
 
     try:
