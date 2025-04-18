@@ -6,7 +6,7 @@ from analyzer.cpp.CppVariableAnalyzer import *
 from analyzer.common.AnalyzerHelper import *
 from analyzer.common.CommentAnalyzer import *
 from utils.FileReader import *
-from model.AnalyzerEntities import VariableNode  # Import VariableNode
+from model.AnalyzerEntities import VariableNode
 
 
 class CppClassAnalyzer(AbstractAnalyzer):
@@ -22,15 +22,12 @@ class CppClassAnalyzer(AbstractAnalyzer):
 
     def initPatterns(self):
         self.pattern = [
-            r"(template\s*<[^>]+>\s*)?"  # Group 1: Optional template declaration
-            r"(?:\s*(public|private|protected|static|final)\s+)*"  # Group 2: Optional modifiers
-            r"(class|struct)\s+"  # Group 3: class or struct
-            r"([a-zA-Z_][a-zA-Z0-9_]*)"  # Group 4: Class name
+            r"(template\s*<[^>]+>\s*)?"
+            r"(?:\s*(public|private|protected|static|final)\s+)*"
+            r"(class|struct)\s+"
+            r"([a-zA-Z_][a-zA-Z0-9_]*)"
             r"(?:\s+final)?"
-            # --- Start Change: Require '{' for definition, ignore ';' forward declarations ---
-            # Match optional inheritance list ':[^{]+' followed by '{' OR just '{'
             r"(?:\s*:\s*[^{]+)?\s*\{"
-            # --- End Change ---
         ]
 
         self.classNamePattern = r"\b(class|struct)\s+([a-zA-Z_][a-zA-Z0-9_]*)"
@@ -52,7 +49,6 @@ class CppClassAnalyzer(AbstractAnalyzer):
             fileContent = inputStr
 
         package_name = self.extract_full_package_name(fileContent)
-        print(f"Extracted Package Name: {package_name}")
         listOfClasses = list()
 
         for pattern in self.pattern:
@@ -66,19 +62,11 @@ class CppClassAnalyzer(AbstractAnalyzer):
                 abs_match_end = current_search_pos + match.end()
                 class_header = fileContent[abs_match_start:abs_match_end]
 
-                print(
-                    "-------Match at begin % s, end % s "
-                    % (abs_match_start, abs_match_end),
-                    class_header,
-                )
-
                 classBoundary = AnalyzerHelper().findClassBoundary(
                     fileContent[abs_match_start:]
                 )
                 if classBoundary <= 0:
-                    print(
-                        f"WARN: Could not find boundary for class '{class_header.strip()}', skipping this match and advancing."
-                    )
+                    # Advance past the header if boundary not found
                     current_search_pos = abs_match_end
                     continue
 
@@ -91,11 +79,9 @@ class CppClassAnalyzer(AbstractAnalyzer):
 
                 classInfo.name = match.group(4).strip() if match.group(4) else None
                 if not classInfo.name:
-                    print("ERROR: Could not extract class name from header.")
+                    # If name extraction failed, skip and advance past header
                     current_search_pos = abs_match_end
                     continue
-
-                print("====> Class/Interface name: ", classInfo.name)
 
                 template_match = re.search(self.templateParamPattern, class_header)
                 if template_match:
@@ -103,10 +89,8 @@ class CppClassAnalyzer(AbstractAnalyzer):
                     classInfo.params = [
                         p.split()[-1] for p in params_str.split(",") if p.strip()
                     ]
-                    print("====> Template Params: ", classInfo.params)
 
                 classInfo.relations = self.extract_class_inheritances(class_header)
-                print("====> classInfo.relations: ", classInfo.relations)
 
                 classInfo = self.extract_class_spec(class_header, classInfo)
 
@@ -115,9 +99,6 @@ class CppClassAnalyzer(AbstractAnalyzer):
 
                 if any(m.isAbstract for m in classInfo.methods):
                     classInfo.isAbstract = True
-                    print(
-                        "====> Class marked as ABSTRACT due to pure virtual method(s)."
-                    )
 
                 variables = CppVariableAnalyzer().analyze(
                     None, lang, class_body_content
@@ -135,9 +116,9 @@ class CppClassAnalyzer(AbstractAnalyzer):
 
                 listOfClasses.append(classInfo)
 
+                # Advance search position past the current class definition
                 current_search_pos = abs_match_start + classBoundary
 
-        print(listOfClasses)
         return listOfClasses
 
     def find_class_pattern(self, pattern, inputStr):
@@ -192,7 +173,6 @@ class CppClassAnalyzer(AbstractAnalyzer):
         namespace_matches = list(re.finditer(self.patternPackageName, inputStr))
         if not namespace_matches:
             return ""
-        # Return the name captured by the last match found
         return namespace_matches[-1].group(1).strip()
 
     def extract_relation_from_members(
