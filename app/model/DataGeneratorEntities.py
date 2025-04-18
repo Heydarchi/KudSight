@@ -40,31 +40,44 @@ class GraphData:
     links: List = field(default_factory=list)
 
     def _normalize_id(self, node_id: str) -> str:
-        """Remove potential quotes for consistent ID checking."""
-        if (
-            isinstance(node_id, str)
-            and node_id.startswith('"')
-            and node_id.endswith('"')
-        ):
-            return node_id[1:-1]
-        return node_id
+        """Return the ID as is. Assumes IDs are consistently generated qualified names."""
+        return node_id if isinstance(node_id, str) else ""
 
     def add_blank_classes(self):
-        # Normalize IDs before comparison
-        defined_nodes = {self._normalize_id(node.id) for node in self.nodes}
-        referenced_nodes = {
-            self._normalize_id(link.source) for link in self.links
-        }.union({self._normalize_id(link.target) for link in self.links})
+        # Use raw IDs (qualified names) for checking
+        defined_nodes = {node.id for node in self.nodes}
+        referenced_nodes = {link.source for link in self.links}.union(
+            {link.target for link in self.links}
+        )
 
         undefined_nodes = referenced_nodes - defined_nodes
-
+        # Normalize IDs before comparison # This comment seems misplaced from previous logic, but harmless
+        defined_nodes = {
+            self._normalize_id(node.id) for node in self.nodes
+        }  # This re-calculates defined_nodes using normalized ID, which contradicts the goal of using raw IDs. Let's fix this too.
+        # --- Start Change: Use raw IDs for checking existence ---
+        defined_nodes_raw = {
+            node.id for node in self.nodes
+        }  # Use raw IDs for the check
+        # --- End Change ---
         for undefined_node_id in undefined_nodes:
-            # Add with the original ID (might be quoted)
-            original_id = undefined_node_id  # Keep original form for adding
-            if undefined_node_id not in defined_nodes:  # Check again just in case
+            # --- Start Change: Check against raw defined IDs ---
+            if (
+                undefined_node_id and undefined_node_id not in defined_nodes_raw
+            ):  # Check against raw IDs
+                # --- End Change ---
                 print(f"Adding blank node for undefined reference: {undefined_node_id}")
+                # Extract package and simple ID heuristically if possible, otherwise leave package blank
+                package_guess = ""
+                simple_id_guess = undefined_node_id
+                if "::" in undefined_node_id:
+                    parts = undefined_node_id.split("::")
+                    package_guess = "::".join(parts[:-1])
+                    simple_id_guess = parts[-1]
+
                 blank_node = ClassData(
-                    id=undefined_node_id,  # Use the ID as found in links
+                    id=undefined_node_id,  # Use the qualified name as the ID
+                    package=package_guess,  # Best guess for package
                     attributes=[],
                     methods=[],
                     linesOfCode=None,
@@ -74,28 +87,25 @@ class GraphData:
                 self.nodes.append(blank_node)
 
     def remove_duplicates(self):
-        # Remove duplicate nodes based on normalized 'id'
+        # Remove duplicate nodes based on the raw 'id' (qualified name)
         unique_nodes = {}
         kept_nodes = []
         for node in self.nodes:
-            node_id_normalized = self._normalize_id(node.id)
-            if node_id_normalized not in unique_nodes:
-                unique_nodes[node_id_normalized] = node
+            node_id = node.id  # Use raw ID
+            if node_id not in unique_nodes:
+                unique_nodes[node_id] = node
                 kept_nodes.append(node)
             else:
-                # Optional: Merge data if duplicates found, or just keep first
-                print(
-                    f"Duplicate node found and removed: {node.id} (normalized: {node_id_normalized})"
-                )
+                print(f"Duplicate node found and removed: {node.id}")
         self.nodes = kept_nodes
 
-        # Remove duplicate links based on normalized 'source', 'target', 'relation'
+        # Remove duplicate links based on raw 'source', 'target', 'relation'
         unique_links = set()
         filtered_links = []
         for link in self.links:
             link_id_tuple = (
-                self._normalize_id(link.source),
-                self._normalize_id(link.target),
+                link.source,  # Use raw ID
+                link.target,  # Use raw ID
                 link.relation,
             )
             if link_id_tuple not in unique_links:
@@ -108,15 +118,7 @@ class GraphData:
         self.links = filtered_links
 
     def to_json(self) -> str:
-        # Duplicates should be removed before calling this
-        # Blank classes should be added before calling this
-        # Ensure nodes/links are stable before dumping
-        self.nodes.sort(key=lambda x: self._normalize_id(x.id))
-        self.links.sort(
-            key=lambda x: (
-                self._normalize_id(x.source),
-                self._normalize_id(x.target),
-                x.relation,
-            )
-        )
+        # Sort using raw ID
+        self.nodes.sort(key=lambda x: x.id)
+        self.links.sort(key=lambda x: (x.source, x.target, x.relation))
         return json.dumps(asdict(self), indent=4)

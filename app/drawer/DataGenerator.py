@@ -1,50 +1,51 @@
 import os, sys
-
-# --- Start Change: Import re module ---
 import re
-
-# --- End Change ---
 from model.AnalyzerEntities import *
 from model.DataGeneratorEntities import *
-
-# --- Start Change: Import ClassUmlDrawer for its filtering logic ---
-from drawer.ClassUmlDrawer import (
-    ClassUmlDrawer,
-)  # Assuming CPP for now, might need adjustment for multi-lang
-
-# --- End Change ---
-
+from drawer.ClassUmlDrawer import ClassUmlDrawer
 from utils.FileWriter import *
 from datetime import datetime
+from typing import Dict, List  # Import Dict and List for type hinting
 
 
 class DataGenerator:
     def __init__(self) -> None:
         self.graphData = GraphData()
-        # --- Start Change: Instantiate a drawer to use its filtering ---
-        # TODO: Handle multi-language scenarios appropriately if needed
         try:
             # Assuming CPP context for filtering based on the example
+            # TODO: Determine language context dynamically if needed
             self._uml_drawer_for_filtering = ClassUmlDrawer(FileTypeEnum.CPP)
         except Exception as e:
             print(f"Warning: Could not instantiate ClassUmlDrawer for filtering: {e}")
             self._uml_drawer_for_filtering = None
-        # --- End Change ---
 
     def generateData(self, listOfClassNodes: list[ClassNode]):
-        dataList = list()
+        # --- Start Change: Build lookup maps ---
+        qualified_name_map: Dict[str, ClassNode] = {}
+        simple_name_map: Dict[str, List[str]] = (
+            {}
+        )  # Map simple name to list of qualified names
 
         for node in listOfClassNodes:
-            self.dumpClass(node)
+            qualified_name = self._get_qualified_name(node)
+            if qualified_name:  # Ensure we have a valid name
+                qualified_name_map[qualified_name] = node
 
-        # --- Start Change: Add blank classes *before* removing duplicates ---
-        # This ensures referenced nodes exist before duplicate removal logic
+                # Use the simple name extracted by the analyzer
+                simple_name = node.name
+                if simple_name:
+                    if simple_name not in simple_name_map:
+                        simple_name_map[simple_name] = []
+                    simple_name_map[simple_name].append(qualified_name)
+        # --- End Change ---
+
+        for node in listOfClassNodes:
+            # --- Start Change: Pass maps to dumpClass ---
+            self.dumpClass(node, qualified_name_map, simple_name_map)
+            # --- End Change ---
+
         self.graphData.add_blank_classes()
-        # --- End Change ---
-
-        # --- Start Change: Remove duplicates *after* adding all nodes/links ---
         self.graphData.remove_duplicates()
-        # --- End Change ---
 
         json_output = self.graphData.to_json()
 
@@ -52,97 +53,178 @@ class DataGenerator:
         filePath = "static/out/data" + date_time + ".json"
         self.writeToFile(filePath, json_output)
 
-    def dumpClass(self, classInfo: ClassNode):
-        # --- Start Debug Logging ---
-        print(f"DataGenerator dumping: {classInfo.name}")
+    def _get_qualified_name(self, classInfo: ClassNode) -> str:
+        """Generates the fully qualified name."""
+        name_part = classInfo.name
+        if classInfo.params:
+            # Add template params to simple name before adding package
+            name_part = f'{classInfo.name}<{", ".join(classInfo.params)}>'
+        if classInfo.package:
+            return f"{classInfo.package}::{name_part}"
+        else:
+            return name_part
+
+    def _get_qualified_name_from_string(
+        self, name_str: str, current_package: str = None
+    ) -> str:
+        """
+        Attempts to ensure a name string is fully qualified.
+        If it doesn't contain '::', prepend the current_package if available,
+        unless it's a known primitive/standard type or likely a template parameter.
+        """
+        if not isinstance(name_str, str):
+            return ""
+        name_str = name_str.strip()  # Ensure no leading/trailing spaces
+
+        # If it already has a namespace separator, assume it's qualified (or std::)
+        if "::" in name_str:
+            # Special case: Strip std:: prefix for consistency if present
+            if name_str.startswith("std::"):
+                return name_str[5:]
+            return name_str
+
+        # Check if it's a known primitive/common type that shouldn't be qualified
+        # (This list should ideally match the one used for ignoring relations)
+        common_unqualified_types = {
+            "string",
+            "vector",
+            "map",
+            "set",
+            "list",
+            "deque",
+            "pair",
+            "void",
+            "bool",
+            "char",
+            "wchar_t",
+            "char8_t",
+            "char16_t",
+            "char32_t",
+            "short",
+            "int",
+            "long",
+            "float",
+            "double",
+            "signed",
+            "unsigned",
+            "size_t",
+            "ptrdiff_t",
+            "nullptr_t",
+            "auto",
+            # Add other common STL types as needed
+        }
+        # Also check for typical template parameter names (e.g., single uppercase letter)
+        is_likely_template_param = len(name_str) == 1 and "A" <= name_str <= "Z"
+
+        if name_str in common_unqualified_types or is_likely_template_param:
+            return name_str  # Return as is, don't prepend package
+
+        # If no namespace, not common/template, and we have a current package context, prepend it
+        elif current_package:
+            return f"{current_package}::{name_str}"
+        # Otherwise, return the name as is (might be a global type from root namespace)
+        else:
+            return name_str
+
+    # --- Start Change: Modify dumpClass signature ---
+    def dumpClass(
+        self,
+        classInfo: ClassNode,
+        qualified_name_map: Dict[str, ClassNode],
+        simple_name_map: Dict[str, List[str]],
+    ):
+        # --- End Change ---
+        qualified_name = self._get_qualified_name(classInfo)
+        print(f"DataGenerator dumping: {qualified_name}")
+        # print(f"  - Simple Name: {classInfo.name}") # Keep simple name if needed
         print(f"  - Package: {classInfo.package}")
         print(f"  - Variables: {classInfo.variables}")
         print(f"  - Relations: {classInfo.relations}")
-        # --- End Debug Logging ---
 
         classData = ClassData()
-        classData.package = classInfo.package  # Use full namespace from analyzer
-        # --- Start Change: ID should be simple name, package field provides scope ---
-        classData.id = self.fix_name_issue(classInfo.name)  # Use simple name
-        if classInfo.params:
-            # Quote simple name if templated
-            classData.id = f'"{classInfo.name}<{", ".join(classInfo.params)}>"'
-        # --- End Change ---
+        classData.package = classInfo.package
+        classData.id = qualified_name  # Use fully qualified name as ID
         classData.type = "interface" if classInfo.isInterface else "class"
 
         classData.isAbstract = classInfo.isAbstract
         classData.isFinal = classInfo.isFinal
         classData.isStatic = classInfo.isStatic
 
-        # --- Start Change: Store structured member info (Optional but recommended) ---
-        # Option 1: Keep simple strings (current approach)
+        # Keep simple strings for attributes/methods for now
         classData.methods = [method.name for method in classInfo.methods]
         classData.attributes = [
             f"{var.accessLevel.name.lower()} {'static ' if var.isStatic else ''}{var.dataType} {var.name}".strip()
             for var in classInfo.variables
             if var.name != "return"
         ]
-        # Option 2: Store richer data (Example - uncomment and adjust DataGeneratorEntities if used)
-        # classData.methods = [
-        #     {
-        #         "name": method.name,
-        #         "returnType": method.dataType,
-        #         "access": method.accessLevel.name.lower(),
-        #         "params": method.params,
-        #         "isStatic": method.isStatic,
-        #         "isAbstract": method.isAbstract
-        #     } for method in classInfo.methods
-        # ]
-        # classData.attributes = [
-        #     {
-        #         "name": var.name,
-        #         "type": var.dataType,
-        #         "access": var.accessLevel.name.lower(),
-        #         "isStatic": var.isStatic,
-        #         "isFinal": var.isFinal # 'const' mapped to isFinal
-        #     } for var in classInfo.variables if var.name != "return"
-        # ]
-        # --- End Change ---
 
         self.graphData.nodes.append(classData)
 
-        print(
-            f"  - Processing relations for {classData.id} in package {classData.package}:"
-        )
+        print(f"  - Processing relations for {classData.id}:")  # ID is now qualified
         for relation in classInfo.relations:
             try:
-                # --- Start Change: Use full name for target ---
-                target_name_full = self.fix_name_issue(
-                    relation.name
-                )  # Use potentially qualified name
+                target_name_original = relation.name  # Keep original name from relation
+                target_name_full = target_name_original  # Default target for link
+
+                is_inheritance = relation.relationship in [
+                    InheritanceEnum.EXTENDED,
+                    InheritanceEnum.IMPLEMENTED,
+                ]
+                is_qualified_original = "::" in target_name_original
+
+                if not is_inheritance or is_qualified_original:
+                    # Try to qualify dependencies or already-qualified inheritance names
+                    target_name_full = self._get_qualified_name_from_string(
+                        target_name_original, classInfo.package
+                    )
+                # Else (unqualified inheritance): target_name_full remains the original unqualified name
+
+                # --- Start Change: Resolve target against known classes ---
+                resolved_target = target_name_full  # Start with the potentially qualified/unqualified name
+
+                if target_name_full not in qualified_name_map:
+                    # If the target isn't directly found (e.g., "Utils", "T", or maybe "MyCompany::Core::Utils" which is wrong)
+                    # And if the target_name_full is currently unqualified...
+                    if "::" not in target_name_full:
+                        # Check if this simple name exists uniquely in the simple_name_map
+                        possible_matches = simple_name_map.get(target_name_full, [])
+                        if len(possible_matches) == 1:
+                            # Found a unique qualified match, use it!
+                            resolved_target = possible_matches[0]
+                            print(
+                                f"    - Resolved unqualified '{target_name_full}' to '{resolved_target}'"
+                            )
+                        elif len(possible_matches) > 1:
+                            # Ambiguous match, keep original target, let blank node handle it
+                            print(
+                                f"    - Ambiguous match for unqualified '{target_name_full}', keeping as is."
+                            )
+                        # Else (len == 0): No match found, likely a template param or external type, keep original target
+                # Else (target_name_full is in qualified_name_map): Already resolved, use it.
+
                 # --- End Change ---
 
                 should_ignore = False
                 if self._uml_drawer_for_filtering:
-                    # Filter based on the potentially qualified name
+                    # Filter based on the resolved target name
                     should_ignore = self._uml_drawer_for_filtering._should_ignore_type(
-                        target_name_full
+                        resolved_target
                     )
-                # ... fallback logic ...
 
                 if not should_ignore:
                     dependency = Dependency()
-                    dependency.source = (
-                        classData.id
-                    )  # Source is simple name (within its package context)
-                    # --- Start Change: Target uses full name ---
-                    dependency.target = (
-                        target_name_full  # Target needs full name for global reference
-                    )
+                    dependency.source = classData.id  # Source is qualified name
+                    # --- Start Change: Use resolved target ---
+                    dependency.target = resolved_target  # Use the resolved name
                     # --- End Change ---
                     dependency.relation = relation.relationship.name.lower()
                     print(
-                        f"    - Adding link: {dependency.source} ({classData.package}) -> {dependency.target} ({dependency.relation})"
+                        f"    - Adding link: {dependency.source} -> {dependency.target} ({dependency.relation})"
                     )
                     self.graphData.links.append(dependency)
                 else:
                     print(
-                        f"    - Skipping ignored/primitive relation: {classData.id} -> {target_name_full} ({relation.relationship.name.lower()})"
+                        f"    - Skipping ignored/primitive relation: {classData.id} -> {resolved_target} ({relation.relationship.name.lower()})"
                     )
 
             except AttributeError as e:
@@ -151,15 +233,6 @@ class DataGenerator:
     def writeToFile(self, fileName, json_output):
         with open(fileName, "w") as f:
             f.write(json_output)
-
-    def fix_name_issue(self, name):
-        if not isinstance(name, str):
-            return ""
-        # Quote only if it contains template chars or spaces, preserve ::
-        if re.search(r"[<> ]", name):
-            if not (name.startswith('"') and name.endswith('"')):
-                return '"' + name + '"'
-        return name
 
 
 # Optional test run (standalone)

@@ -235,7 +235,9 @@ class CppClassAnalyzer(AbstractAnalyzer):
         return inheritance_list
 
     def _get_cpp_primitives_and_common(self):
+        # Add common STL types here
         return {
+            # Primitives
             "void",
             "bool",
             "char",
@@ -253,6 +255,32 @@ class CppClassAnalyzer(AbstractAnalyzer):
             "size_t",
             "ptrdiff_t",
             "nullptr_t",
+            "auto",
+            # Common STL / Standard types (case-sensitive)
+            "string",
+            "wstring",
+            "u16string",
+            "u32string",
+            "vector",
+            "map",
+            "set",
+            "list",
+            "deque",
+            "pair",
+            "tuple",
+            "shared_ptr",
+            "unique_ptr",
+            "weak_ptr",
+            "istream",
+            "ostream",
+            "iostream",
+            "fstream",
+            "sstream",
+            "function",
+            "optional",
+            "variant",
+            "any",
+            # Add others as needed
         }
 
     def _get_type_cleaner(self):
