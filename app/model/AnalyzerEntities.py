@@ -32,6 +32,7 @@ class MethodNode:
     params: List[str] = field(default_factory=list)
     isStatic: bool = False
     isOverridden: bool = False
+    isAbstract: bool = False
     variables: List[VariableNode] = field(default_factory=list)
 
 
@@ -55,6 +56,7 @@ class ClassNode:
     isStatic: bool = False
     isFinal: bool = False
     isInterface: bool = False
+    isAbstract: bool = False
     variables: List[VariableNode] = field(default_factory=list)
     methods: List[MethodNode] = field(default_factory=list)
     relations: List[Inheritance] = field(default_factory=list)

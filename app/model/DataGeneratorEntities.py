@@ -8,6 +8,9 @@ class ClassData:
     package: str = ""
     id: str = ""
     type: str = "class"
+    isAbstract: bool = False
+    isFinal: bool = False
+    isStatic: bool = False
     attributes: Optional[List[str]] = field(default_factory=list)
     methods: Optional[List[str]] = field(default_factory=list)
     linesOfCode: Optional[int] = None

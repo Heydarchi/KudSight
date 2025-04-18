@@ -18,11 +18,17 @@ class CppClassAnalyzer(AbstractAnalyzer):
         self.classExtendPattern = dict()
         self.patternPackageName = dict()
         self.initPatterns()
+        self.templateParamPattern = r"template\s*<([^>]+)>"
 
     def initPatterns(self):
-
         self.pattern = [
-            r"(template\s*<[^>]+>\s*)?(?:\s*(public|private|protected|static|final)\s+)*(class|struct)\s+[a-zA-Z_][a-zA-Z0-9_]*(?:\s+final)?(?:\s*:\s*[^({]+)?\s*[{;]"
+            r"(template\s*<[^>]+>\s*)?"  # Group 1: Optional template declaration
+            r"(?:\s*(public|private|protected|static|final)\s+)*"  # Group 2: Optional modifiers
+            r"(class|struct)\s+"  # Group 3: class or struct
+            r"([a-zA-Z_][a-zA-Z0-9_]*)"  # Group 4: Class name
+            r"(?:\s+final)?"
+            r"(?:\s*:\s*[^({]+)?"  # Optional inheritance
+            r"\s*[{;]"
         ]
 
         self.classNamePattern = r"\b(class|struct)\s+([a-zA-Z_][a-zA-Z0-9_]*)"
@@ -44,7 +50,6 @@ class CppClassAnalyzer(AbstractAnalyzer):
             fileContent = inputStr
 
         package_name = self.extract_package_name(fileContent)
-        # print("\n********************\n", str(fileContent).rstrip())
         listOfClasses = list()
         for pattern in self.pattern:
             tempContent = fileContent
@@ -53,53 +58,64 @@ class CppClassAnalyzer(AbstractAnalyzer):
             match = self.find_class_pattern(pattern, tempContent)
             while match != None:
                 classInfo = ClassNode()
+                class_header = tempContent[match.start(): match.end()]
                 print(
                     "-------Match at begin % s, end % s "
                     % (match.start(), match.end()),
-                    tempContent[match.start() : match.end()],
+                    class_header,
                 )
 
                 classInfo.package = package_name
 
-                classInfo.name = self.extract_class_name(
-                    tempContent[match.start() : match.end()]
-                )
-                
-                print("====> Class/Interface name: ",classInfo.name)
+                classInfo.name = match.group(4).strip() if match.group(4) else None
+                if not classInfo.name:
+                    print("ERROR: Could not extract class name.")
+                    search_start_index = match.end()
+                    tempContent = tempContent[search_start_index:]
+                    match = self.find_class_pattern(pattern, tempContent)
+                    continue
+
+                print("====> Class/Interface name: ", classInfo.name)
+
+                template_match = re.search(self.templateParamPattern, class_header)
+                if template_match:
+                    params_str = template_match.group(1)
+                    classInfo.params = [p.split()[-1] for p in params_str.split(',') if p.strip()]
+                    print("====> Template Params: ", classInfo.params)
+
                 classInfo.relations = self.extract_class_inheritances(
-                    tempContent[match.start() : match.end()]
+                    class_header
                 )
-                
+
                 print("====> classInfo.relations: ", classInfo.relations)
                 classInfo = self.extract_class_spec(
-                    tempContent[match.start() : match.end()], classInfo
+                    class_header, classInfo
                 )
 
                 classBoundary = AnalyzerHelper().findClassBoundary(
-                    tempContent[match.start() :]
+                    tempContent[match.start():]
                 )
+                class_body_content = tempContent[match.start(): (match.start() + classBoundary)]
 
-                ### Find the variables & methods within the class's boundary
                 methods = CppMethodAnalyzer().analyze(
                     None,
                     lang,
-                    tempContent[match.start() : (match.end() + classBoundary)],
+                    class_body_content,
                 )
                 classInfo.methods.extend(methods)
 
-                # Remove lines containing 'return' before passing to VariableAnalyzer
-                raw_class_body = tempContent[
-                    match.start() : (match.end() + classBoundary)
-                ]
+                if any(m.isAbstract for m in classInfo.methods):
+                    classInfo.isAbstract = True
+                    print("====> Class marked as ABSTRACT due to pure virtual method(s).")
+
                 cleaned_class_body = "\n".join(
                     line
-                    for line in raw_class_body.splitlines()
+                    for line in class_body_content.splitlines()
                     if "return" not in line.strip()
                 )
                 variables = CppVariableAnalyzer().analyze(
                     None, lang, cleaned_class_body
                 )
-
                 classInfo.variables.extend(variables)
 
                 classInfo.relations.extend(
@@ -110,9 +126,7 @@ class CppClassAnalyzer(AbstractAnalyzer):
 
                 listOfClasses.append(classInfo)
 
-                # Start the next search immediately after the end of the current match's header
-                # This ensures subsequent classes in the file are found.
-                search_start_index = match.end()
+                search_start_index = match.start() + classBoundary
                 tempContent = tempContent[search_start_index:]
                 match = self.find_class_pattern(pattern, tempContent)
 
@@ -140,9 +154,9 @@ class CppClassAnalyzer(AbstractAnalyzer):
             r"class\s+[a-zA-Z_][a-zA-Z0-9_]*\s*(?:final)?\s*:\s*([^;{]+)", inputStr
         )
         if match:
-            inherited_part = match.group(1)  # e.g., "public Base, private Utils"
+            inherited_part = match.group(1)
             for item in inherited_part.split(","):
-                name = item.strip().split(" ")[-1]  # get last word (Base, Utils, etc.)
+                name = item.strip().split(" ")[-1]
                 inheritance.append(
                     Inheritance(name=name, relationship=InheritanceEnum.EXTENDED)
                 )
@@ -178,26 +192,21 @@ class CppClassAnalyzer(AbstractAnalyzer):
     def extract_relation_from_members(self, methods: List[MethodNode], variables: List[VariableNode], params, existing_relations: List[Inheritance]):
         inheritance_list = list()
         cleaner = self._get_type_cleaner()
-        # Get names of existing relations (EXTENDED, IMPLEMENTED) to avoid adding duplicates as DEPENDED
         existing_relation_names = {cleaner(rel.name) for rel in existing_relations}
 
-        # Process Methods (Return Types and Parameters)
         for method in methods:
-            # Return type
             if method.dataType:
                 cleaned_return_type = cleaner(method.dataType)
                 if cleaned_return_type and cleaned_return_type not in existing_relation_names and not self._is_primitive_or_common(cleaned_return_type):
                     inheritance_list.append(Inheritance(name=cleaned_return_type, relationship=InheritanceEnum.DEPENDED))
-                    existing_relation_names.add(cleaned_return_type) # Add to set to prevent re-adding
+                    existing_relation_names.add(cleaned_return_type)
 
-            # Parameter types
             for param_type in method.params:
                 cleaned_param_type = cleaner(param_type)
                 if cleaned_param_type and cleaned_param_type not in existing_relation_names and not self._is_primitive_or_common(cleaned_param_type):
                     inheritance_list.append(Inheritance(name=cleaned_param_type, relationship=InheritanceEnum.DEPENDED))
                     existing_relation_names.add(cleaned_param_type)
 
-        # Process Variables (Data Types)
         for variable in variables:
             if variable.dataType:
                  cleaned_var_type = cleaner(variable.dataType)
@@ -208,47 +217,36 @@ class CppClassAnalyzer(AbstractAnalyzer):
         return inheritance_list
 
     def _get_cpp_primitives_and_common(self):
-        # More focused list for C++ dependency exclusion
         return {
-            # Primitives
             "void", "bool", "char", "wchar_t", "char8_t", "char16_t", "char32_t",
             "short", "int", "long", "float", "double", "signed", "unsigned",
             "size_t", "ptrdiff_t", "nullptr_t",
         }
 
     def _get_type_cleaner(self):
-        # Returns a function that cleans a type string
         modifiers = {"const", "volatile", "static", "mutable", "register", "inline", "extern", "typename", "using", "struct", "class"}
         postfixes = {"*", "&", "&&"}
-        namespaces_to_strip = {"std::", "::"}  # Strip global scope and std::
+        namespaces_to_strip = {"std::", "::"}
 
         def clean_type(name: str) -> str:
             if not isinstance(name, str): return ""
-            # Remove templates like <...>
             name = re.sub(r"<.*?>", "", name)
-            # Remove default arguments = ...
             name = re.sub(r"\s*=[^,]+", "", name)
-            # Remove array brackets []
             name = re.sub(r"\[.*?\]", "", name)
-            # Replace pointer/ref symbols with spaces for easier splitting
             for post in postfixes:
                 name = name.replace(post, " ")
 
             parts = name.split()
-            # Filter out modifiers and keep the core type part(s)
             core_parts = [p for p in parts if p and p not in modifiers]
 
             if not core_parts: return ""
 
-            # Join core parts back
             cleaned_name = " ".join(core_parts)
 
-            # Strip specified namespaces from the beginning
             for ns in namespaces_to_strip:
                  if cleaned_name.startswith(ns):
                       cleaned_name = cleaned_name[len(ns):]
 
-            # Handle potential remaining scope resolution like MyScope::MyType
             cleaned_name = cleaned_name.split("::")[-1]
 
             return cleaned_name.strip()
@@ -256,12 +254,9 @@ class CppClassAnalyzer(AbstractAnalyzer):
         return clean_type
 
     def _is_primitive_or_common(self, cleaned_name: str) -> bool:
-        # Check if the cleaned name itself or any part (if multi-word) is primitive/common
         primitives = self._get_cpp_primitives_and_common()
-        # Check the full cleaned name first (e.g., "long long")
         if cleaned_name in primitives:
              return True
-        # Then check individual parts (e.g., "unsigned" in "unsigned int")
         return any(part in primitives for part in cleaned_name.split())
 
     def extract_class_params(self, inputStr):

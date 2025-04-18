@@ -53,10 +53,20 @@ class DataGenerator:
         # --- End Debug Logging ---
 
         classData = ClassData()
-        # Ensure package is assigned correctly, even if None initially
         classData.package = classInfo.package if classInfo.package is not None else ""
-        classData.id = classInfo.name
-        classData.type = "class"  # Explicitly set type
+        # --- Start Change: Use fix_name_issue for ID consistency ---
+        classData.id = self.fix_name_issue(classInfo.name)
+        # Add template params to ID if they exist, similar to UML drawer logic
+        if classInfo.params:
+             classData.id = f'"{classInfo.name}<{", ".join(classInfo.params)}>"'
+        # --- End Change ---
+        classData.type = "interface" if classInfo.isInterface else "class" # Set type based on flag
+
+        # --- Start Change: Add flags ---
+        classData.isAbstract = classInfo.isAbstract
+        classData.isFinal = classInfo.isFinal
+        classData.isStatic = classInfo.isStatic
+        # --- End Change ---
 
         # Include methods by name
         classData.methods = [
@@ -83,29 +93,37 @@ class DataGenerator:
 
         self.graphData.nodes.append(classData)
 
-        # --- Start Change: Process ALL relations, including DEPENDED, applying filtering ---
-        print(f"  - Processing relations for {classInfo.name}:")
+        # --- Start Change: Use potentially templated ID for source ---
+        print(f"  - Processing relations for {classData.id}:") # Use the potentially templated ID
         for relation in classInfo.relations:
             try:
-                target_name = self.fix_name_issue(relation.name)
+                target_name_raw = relation.name
+                target_name_fixed = self.fix_name_issue(target_name_raw)
+                # Add template params to target if it's a known templated class (more advanced, skip for now)
+
                 # Use the drawer's filtering logic if available
                 should_ignore = False
                 if self._uml_drawer_for_filtering:
-                    should_ignore = self._uml_drawer_for_filtering._should_ignore_type(target_name)
+                    # Pass the raw name for filtering check
+                    should_ignore = self._uml_drawer_for_filtering._should_ignore_type(target_name_raw)
                 else:
                     # Basic fallback if drawer init failed (less accurate)
-                    if target_name.lower() in ["string", "int", "void", "char", "bool", "t"]:
+                    if target_name_fixed.lower() in ["string", "int", "void", "char", "bool", "t"]:
                          should_ignore = True
 
                 if not should_ignore:
                     dependency = Dependency()
-                    dependency.source = classInfo.name
-                    dependency.target = target_name
+                    dependency.source = classData.id # Use the potentially templated source ID
+                    dependency.target = target_name_fixed # Use fixed target name
+                    # Add template params to target if needed (complex)
+                    # if target_name_raw in known_template_classes:
+                    #    dependency.target = f'"{target_name_raw}<...>"' # Placeholder
+
                     dependency.relation = relation.relationship.name.lower()
                     print(f"    - Adding link: {dependency.source} -> {dependency.target} ({dependency.relation})")
                     self.graphData.links.append(dependency)
                 else:
-                    print(f"    - Skipping ignored/primitive relation: {classInfo.name} -> {target_name} ({relation.relationship.name.lower()})")
+                    print(f"    - Skipping ignored/primitive relation: {classData.id} -> {target_name_fixed} ({relation.relationship.name.lower()})")
 
             except AttributeError as e:
                 print(f"    - Error processing relation {relation}: {e}")
@@ -116,16 +134,11 @@ class DataGenerator:
             f.write(json_output)
 
     def fix_name_issue(self, name):
-        # --- Start Change: Ensure name is a string before checks ---
         if not isinstance(name, str):
-            return "" # Or handle appropriately
-        # --- End Change ---
-        if ">" in name or "<" in name:
-            # --- Start Change: Also quote if it contains spaces (likely template with space) ---
-            if " " in name:
-                 return '"' + name + '"'
-            # --- End Change ---
-            return '"' + name + '"'
+            return ""
+        # Keep quoting for names containing '<' or '>' only if NOT handled by template logic
+        # This function is now simpler, mainly for ensuring string type
+        # Quoting for templates is handled in dumpClass and ClassUmlDrawer directly
         return name
 
 

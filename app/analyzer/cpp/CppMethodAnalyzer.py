@@ -10,7 +10,7 @@ from utils.FileReader import *
 
 class CppMethodAnalyzer(AbstractAnalyzer):
     def __init__(self):
-        # Regex v6.1: Keep v6 structure, relax end anchor slightly for inline
+        # Regex v6.2: Add group for pure virtual specifier (= 0)
         self.pattern = (
             r"^\s*"                                      # Start of line, optional whitespace
             r"(?:template\s*<[^>]+>\s*)?"                # Optional template declaration
@@ -25,10 +25,10 @@ class CppMethodAnalyzer(AbstractAnalyzer):
             r"(?:noexcept(?:\([^)]*\))?)?\s*"            # Optional noexcept(...)
             r"(?:->\s*\S+)?\s*"                          # Optional trailing return type
             r"(?:[:]\s*.*)?\s*"                          # Optional initializer list
-            r"(?:=\s*(?:0|default|delete))?\s*"          # Optional pure virtual, default, delete
-            # --- Start Change: Relaxed end anchor ---
-            r"\s*(?:\{|;|=)"                             # Must end with {, ;, or = (e.g., = 0)
+            # --- Start Change: Add group 6 for pure virtual ---
+            r"(\s*=\s*(?:0|default|delete))?\s*"         # Optional pure virtual, default, delete (Group 6)
             # --- End Change ---
+            r"\s*(?:\{|;|=)"                             # Must end with {, ;, or =
         )
         self.access_pattern = r"^\s*(public|private|protected):"
 
@@ -119,6 +119,10 @@ class CppMethodAnalyzer(AbstractAnalyzer):
         method_name = match.group(3).strip() if match.group(3) else ""
         params_str = match.group(4).strip() if match.group(4) else ""
         is_const_method = match.group(5) == 'const'
+        # --- Start Change: Check group 6 for pure virtual ---
+        pure_virtual_specifier = match.group(6).strip() if match.group(6) else ""
+        is_abstract = pure_virtual_specifier == "= 0"
+        # --- End Change ---
 
         type_keywords_to_remove = {'virtual', 'static', 'inline', 'explicit', 'public:', 'private:', 'protected:'}
         cleaned_group1 = return_type_or_ctor_dtor
@@ -151,13 +155,17 @@ class CppMethodAnalyzer(AbstractAnalyzer):
         if re.search(r"^\s*static\s+", inputString, re.IGNORECASE):
              methodInfo.isStatic = True
 
+        # --- Start Change: Set isAbstract flag ---
+        methodInfo.isAbstract = is_abstract
+        # --- End Change ---
+
         methodInfo.params = self.extractParams(params_str)
 
         if not methodInfo.name or methodInfo.name in {"public:", "private:", "protected:"}:
             print(f"Discarding invalid method parse: Name='{methodInfo.name}', Type='{methodInfo.dataType}' from header: {inputString.strip()}")
             return None
             
-        print(f"Extracted method: {methodInfo.name}, Type: {methodInfo.dataType}, Access: {methodInfo.accessLevel.name}, Params: {methodInfo.params}")
+        print(f"Extracted method: {methodInfo.name}, Type: {methodInfo.dataType}, Access: {methodInfo.accessLevel.name}, Params: {methodInfo.params}, Abstract: {methodInfo.isAbstract}")
         return methodInfo
 
     def extractParams(self, params_str):

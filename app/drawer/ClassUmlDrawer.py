@@ -159,11 +159,21 @@ class ClassUmlDrawer:
     def dump_single_class_definition(self, classInfo: ClassNode) -> list[str]:
         definition = []
         class_type = "interface" if classInfo.isInterface else "class"
+        # --- Start Change: Format name with template params ---
         name = self.fix_name_issue(classInfo.name)
-        # --- Start Change: Fix stereotype replacement ---
-        stereotype = f"<<{ 'final ' if classInfo.isFinal else ''}{'static ' if classInfo.isStatic else ''}>>".replace("<<>>","").strip()
+        if classInfo.params:
+             # Quote the name if it contains template parameters
+             name = f'"{name}<{", ".join(classInfo.params)}>"'
         # --- End Change ---
-        
+
+        # --- Start Change: Add {abstract} stereotype ---
+        stereotype_parts = []
+        if classInfo.isAbstract: stereotype_parts.append("abstract")
+        if classInfo.isFinal: stereotype_parts.append("final")
+        if classInfo.isStatic: stereotype_parts.append("static")
+        stereotype = f"<< { ' '.join(stereotype_parts) } >>" if stereotype_parts else ""
+        # --- End Change ---
+
         bases = []
         for rel in classInfo.relations:
             if rel.relationship in [InheritanceEnum.EXTENDED, InheritanceEnum.IMPLEMENTED]:
@@ -182,8 +192,14 @@ class ClassUmlDrawer:
 
         for method in sorted(classInfo.methods, key=lambda x: x.name):
             access = self._get_access_symbol(method.accessLevel)
-            static_override = f"{'{static} ' if method.isStatic else ''}{'{abstract} ' if method.isOverridden else ''}".strip()
-            if static_override: static_override = f"{{{static_override}}} "
+            # --- Start Change: Use isAbstract for method stereotype ---
+            stereotype_m_parts = []
+            if method.isStatic: stereotype_m_parts.append("static")
+            if method.isAbstract: stereotype_m_parts.append("abstract")
+            # Consider adding isOverridden here if needed for other languages/cases
+            # if method.isOverridden: stereotype_m_parts.append("overridden") # Example
+            static_override = f"{{ { ' '.join(stereotype_m_parts) } }}" if stereotype_m_parts else ""
+            # --- End Change ---
             params_str = ", ".join(self.fix_name_issue(p) for p in method.params)
             return_type = self.fix_name_issue(method.dataType) if method.dataType else ""
             method_name_display = self.fix_name_issue(method.name)
@@ -192,7 +208,7 @@ class ClassUmlDrawer:
             else:
                 return_type_display = f": {return_type}"
 
-            definition.append(f"  {access} {static_override}{method_name_display}({params_str}){return_type_display}")
+            definition.append(f"  {access} {static_override} {method_name_display}({params_str}){return_type_display}")
 
         definition.append("}")
         return definition
@@ -270,8 +286,14 @@ class ClassUmlDrawer:
             return False
 
     def fix_name_issue(self, name):
-        if ">" in name or "<" in name:
-            return '"' + name + '"'
+        # --- Start Change: Handle potential None input ---
+        if not isinstance(name, str):
+             return ""
+        # --- End Change ---
+        # --- Start Change: No need to quote template names here, handled in dump_single_class_definition ---
+        # if ">" in name or "<" in name:
+        #     return '"' + name + '"'
+        # --- End Change ---
         return name
 
 
