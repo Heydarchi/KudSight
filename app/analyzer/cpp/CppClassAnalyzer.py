@@ -6,6 +6,7 @@ from analyzer.cpp.CppVariableAnalyzer import *
 from analyzer.common.AnalyzerHelper import *
 from analyzer.common.CommentAnalyzer import *
 from utils.FileReader import *
+from model.AnalyzerEntities import VariableNode  # Import VariableNode
 
 
 class CppClassAnalyzer(AbstractAnalyzer):
@@ -32,7 +33,7 @@ class CppClassAnalyzer(AbstractAnalyzer):
             r"class\s+[a-zA-Z_][a-zA-Z0-9_]*\s*(?:final)?\s*:\s*(.*?)[{;]"
         )
 
-        self.patternPackageName = r"^\s*namespace\s+([a-zA-Z_][a-zA-Z0-9_:]*)\s*{"
+        self.patternPackageName = r"namespace\s+([a-zA-Z_][a-zA-Z0-9_:]*)\s*{"
 
     def analyze(self, filePath, lang=None, inputStr=None):
         if inputStr == None:
@@ -63,11 +64,13 @@ class CppClassAnalyzer(AbstractAnalyzer):
                 classInfo.name = self.extract_class_name(
                     tempContent[match.start() : match.end()]
                 )
-                # print("====> Class/Interface name: ",classInfo.name)
+                
+                print("====> Class/Interface name: ",classInfo.name)
                 classInfo.relations = self.extract_class_inheritances(
                     tempContent[match.start() : match.end()]
                 )
-                # print("====> classInfo.relations: ", classInfo.relations)
+                
+                print("====> classInfo.relations: ", classInfo.relations)
                 classInfo = self.extract_class_spec(
                     tempContent[match.start() : match.end()], classInfo
                 )
@@ -100,25 +103,18 @@ class CppClassAnalyzer(AbstractAnalyzer):
                 classInfo.variables.extend(variables)
 
                 classInfo.relations.extend(
-                    self.extract_relation_from_methods_and_params(
-                        classInfo.methods, classInfo.params, classInfo.relations
+                    self.extract_relation_from_members(
+                        classInfo.methods, classInfo.variables, classInfo.params, classInfo.relations
                     )
                 )
 
-                classInfo.relations = self.remove_primitive_types(classInfo.relations)
-
-                """classAnalyzer = CppClassAnalyzer()
-                classInfo.classes = classAnalyzer.analyze(
-                    None,
-                    lang,
-                    inputStr=tempContent[match.end() : (match.end() + classBoundary)],
-                )
-                """
-
                 listOfClasses.append(classInfo)
 
-                tempContent = tempContent[match.end() + classBoundary :]
-                match = re.search(pattern, tempContent)
+                # Start the next search immediately after the end of the current match's header
+                # This ensures subsequent classes in the file are found.
+                search_start_index = match.end()
+                tempContent = tempContent[search_start_index:]
+                match = self.find_class_pattern(pattern, tempContent)
 
         print(listOfClasses)
         return listOfClasses
@@ -176,94 +172,100 @@ class CppClassAnalyzer(AbstractAnalyzer):
             return None
         match = re.search(pattern, inputStr)
         if match != None:
-            # print("++++++++++++ extract_package_name:   ", inputStr[match.start() : match.end()].strip().split(" ")[1])
-            return inputStr[match.start() : match.end()].strip().split(" ")[1]
+            return match.group(1).strip()
         return None
 
-    def extract_relation_from_methods_and_params(self, methods, params, relations):
+    def extract_relation_from_members(self, methods: List[MethodNode], variables: List[VariableNode], params, existing_relations: List[Inheritance]):
         inheritance_list = list()
-        for method in methods:
-            for param in method.params:
-                if not any(relation.name == param for relation in relations):
-                    inheritance_list.append(
-                        Inheritance(
-                            name=param.strip(), relationship=InheritanceEnum.DEPENDED
-                        )
-                    )
+        cleaner = self._get_type_cleaner()
+        # Get names of existing relations (EXTENDED, IMPLEMENTED) to avoid adding duplicates as DEPENDED
+        existing_relation_names = {cleaner(rel.name) for rel in existing_relations}
 
-        for param in params:
-            if not any(relation.name == param for relation in relations):
-                inheritance_list.append(
-                    Inheritance(
-                        name=param.strip(), relationship=InheritanceEnum.DEPENDED
-                    )
-                )
-        # print("inheritance_list: ", inheritance_list)
+        # Process Methods (Return Types and Parameters)
+        for method in methods:
+            # Return type
+            if method.dataType:
+                cleaned_return_type = cleaner(method.dataType)
+                if cleaned_return_type and cleaned_return_type not in existing_relation_names and not self._is_primitive_or_common(cleaned_return_type):
+                    inheritance_list.append(Inheritance(name=cleaned_return_type, relationship=InheritanceEnum.DEPENDED))
+                    existing_relation_names.add(cleaned_return_type) # Add to set to prevent re-adding
+
+            # Parameter types
+            for param_type in method.params:
+                cleaned_param_type = cleaner(param_type)
+                if cleaned_param_type and cleaned_param_type not in existing_relation_names and not self._is_primitive_or_common(cleaned_param_type):
+                    inheritance_list.append(Inheritance(name=cleaned_param_type, relationship=InheritanceEnum.DEPENDED))
+                    existing_relation_names.add(cleaned_param_type)
+
+        # Process Variables (Data Types)
+        for variable in variables:
+            if variable.dataType:
+                 cleaned_var_type = cleaner(variable.dataType)
+                 if cleaned_var_type and cleaned_var_type not in existing_relation_names and not self._is_primitive_or_common(cleaned_var_type):
+                      inheritance_list.append(Inheritance(name=cleaned_var_type, relationship=InheritanceEnum.DEPENDED))
+                      existing_relation_names.add(cleaned_var_type)
+
         return inheritance_list
+
+    def _get_cpp_primitives_and_common(self):
+        # More focused list for C++ dependency exclusion
+        return {
+            # Primitives
+            "void", "bool", "char", "wchar_t", "char8_t", "char16_t", "char32_t",
+            "short", "int", "long", "float", "double", "signed", "unsigned",
+            "size_t", "ptrdiff_t", "nullptr_t",
+        }
+
+    def _get_type_cleaner(self):
+        # Returns a function that cleans a type string
+        modifiers = {"const", "volatile", "static", "mutable", "register", "inline", "extern", "typename", "using", "struct", "class"}
+        postfixes = {"*", "&", "&&"}
+        namespaces_to_strip = {"std::", "::"}  # Strip global scope and std::
+
+        def clean_type(name: str) -> str:
+            if not isinstance(name, str): return ""
+            # Remove templates like <...>
+            name = re.sub(r"<.*?>", "", name)
+            # Remove default arguments = ...
+            name = re.sub(r"\s*=[^,]+", "", name)
+            # Remove array brackets []
+            name = re.sub(r"\[.*?\]", "", name)
+            # Replace pointer/ref symbols with spaces for easier splitting
+            for post in postfixes:
+                name = name.replace(post, " ")
+
+            parts = name.split()
+            # Filter out modifiers and keep the core type part(s)
+            core_parts = [p for p in parts if p and p not in modifiers]
+
+            if not core_parts: return ""
+
+            # Join core parts back
+            cleaned_name = " ".join(core_parts)
+
+            # Strip specified namespaces from the beginning
+            for ns in namespaces_to_strip:
+                 if cleaned_name.startswith(ns):
+                      cleaned_name = cleaned_name[len(ns):]
+
+            # Handle potential remaining scope resolution like MyScope::MyType
+            cleaned_name = cleaned_name.split("::")[-1]
+
+            return cleaned_name.strip()
+
+        return clean_type
+
+    def _is_primitive_or_common(self, cleaned_name: str) -> bool:
+        # Check if the cleaned name itself or any part (if multi-word) is primitive/common
+        primitives = self._get_cpp_primitives_and_common()
+        # Check the full cleaned name first (e.g., "long long")
+        if cleaned_name in primitives:
+             return True
+        # Then check individual parts (e.g., "unsigned" in "unsigned int")
+        return any(part in primitives for part in cleaned_name.split())
 
     def extract_class_params(self, inputStr):
         return CppMethodAnalyzer().extractParams(inputStr)
-
-    def remove_primitive_types(self, relations):
-        cpp_primitives = {
-            "void",
-            "bool",
-            "char",
-            "wchar_t",
-            "char16_t",
-            "char32_t",
-            "short",
-            "int",
-            "long",
-            "float",
-            "double",
-            "signed",
-            "unsigned",
-            "size_t",
-            "ptrdiff_t",
-            "int8_t",
-            "int16_t",
-            "int32_t",
-            "int64_t",
-            "uint8_t",
-            "uint16_t",
-            "uint32_t",
-            "uint64_t",
-        }
-
-        # C++ qualifiers and modifiers (prefix)
-        modifiers = {
-            "const",
-            "volatile",
-            "static",
-            "mutable",
-            "register",
-            "inline",
-            "extern",
-            "typename",
-            "using",
-        }
-
-        # C++ pointer/reference postfixes to remove
-        postfixes = {"*", "&", "&&"}
-
-        def clean_type(name: str) -> list[str]:
-            # Remove templates like std::vector<int>
-            name = re.sub(r"<.*?>", "", name)
-            # Split and clean parts
-            parts = name.replace("*", " * ").replace("&", " & ").split()
-            return [
-                p.strip()
-                for p in parts
-                if p and p not in modifiers and p not in postfixes
-            ]
-
-        def is_primitive(name: str) -> bool:
-            cleaned = clean_type(name)
-            return any(part in cpp_primitives for part in cleaned)
-
-        return [rel for rel in relations if not is_primitive(rel.name)]
-
 
 if __name__ == "__main__":
     print(sys.argv)
