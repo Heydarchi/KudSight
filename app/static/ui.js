@@ -1,9 +1,19 @@
 // === ui.js ===
 import * as THREE from 'https://esm.sh/three';
-import { loadGraphData, Graph } from './graph.js';
+import { loadGraphData, Graph, originalGraphData } from './graph.js';
+import { getSelectedNodeIds, clearSelection } from './panel.js';
 
-let currentGraphFile = 'data.json';
+let currentGraphFile = null; // Start with null
+let currentViewMode = '3d'; // Default view mode
 let saveTimeout;
+
+// --- Get references to new elements ---
+const viewMode3DRadio = document.getElementById('viewMode3D');
+const viewModeUMLRadio = document.getElementById('viewModeUML');
+const graphContainer = document.getElementById('graph-container');
+const umlImageContainer = document.getElementById('uml-image-container');
+const umlImage = document.getElementById('uml-image');
+const rightPanel = document.getElementById('right-panel'); // Camera controls
 
 export function setCurrentGraphFile(filename) {
   currentGraphFile = filename;
@@ -35,6 +45,123 @@ export function autoSavePositions() {
   }, 1000);
 }
 
+// --- Function to update dropdown ---
+function updateGraphDataDropdown(files) {
+  const graphDataFileSelect = document.getElementById('graphDataFile');
+  graphDataFileSelect.innerHTML = ''; // Clear existing options
+  if (files && files.length > 0) {
+    files.forEach(file => {
+      const option = document.createElement('option');
+      option.value = file;
+      option.textContent = file;
+      graphDataFileSelect.appendChild(option);
+    });
+  } else {
+    // Handle case with no files
+    const option = document.createElement('option');
+    option.textContent = 'No data files found';
+    option.disabled = true;
+    graphDataFileSelect.appendChild(option);
+  }
+}
+
+// --- Function to set the view mode ---
+function setViewMode(mode) {
+  currentViewMode = mode;
+  if (mode === '3d') {
+    graphContainer.classList.remove('hidden');
+    rightPanel.classList.remove('hidden'); // Show camera controls
+    umlImageContainer.classList.add('hidden');
+    // If graph data exists, ensure it's rendered
+    if (originalGraphData) {
+        Graph.graphData(Graph.graphData()); // Re-trigger rendering if needed
+    } else if (currentGraphFile) {
+        loadContentForFile(currentGraphFile); // Load graph if file selected but no data yet
+    }
+  } else if (mode === 'uml') {
+    graphContainer.classList.add('hidden');
+    rightPanel.classList.add('hidden'); // Hide camera controls
+    umlImageContainer.classList.remove('hidden');
+    // Load the UML image if a file is selected
+    if (currentGraphFile) {
+        loadContentForFile(currentGraphFile);
+    } else {
+        umlImage.src = ''; // Clear image if no file selected
+        umlImage.alt = 'Select an analysis result to view UML diagram.';
+    }
+  }
+}
+
+// --- Function to load content based on mode and file ---
+function loadContentForFile(filename) {
+    setCurrentGraphFile(filename); // Update the current file tracking
+
+    if (currentViewMode === '3d') {
+        // Load 3D graph data (uses the existing loadGraphData function)
+        loadGraphData(filename);
+    } else if (currentViewMode === 'uml') {
+        // Construct PNG filename and load image
+        const baseName = filename.replace(/\.json$/, '');
+        const pngFilename = baseName + '.png'; // Assumes .png is generated alongside .puml
+        const pngPath = '/out/' + pngFilename;
+
+        // Check if image exists before setting src to avoid 404 console errors (optional but cleaner)
+        fetch(pngPath, { method: 'HEAD' })
+            .then(res => {
+                if (res.ok) {
+                    umlImage.src = pngPath;
+                    umlImage.alt = `UML Diagram for ${filename}`;
+                } else {
+                    umlImage.src = '';
+                    umlImage.alt = `UML Diagram PNG not found for ${filename} (Expected: ${pngFilename})`;
+                }
+            })
+            .catch(err => {
+                console.error("Error checking/loading UML image:", err);
+                umlImage.src = '';
+                umlImage.alt = 'Error loading UML diagram.';
+            });
+        // Also ensure the panel is updated with metadata from the JSON
+        // Fetch JSON just for panel setup if needed, but avoid full graph load
+        fetch('/out/' + filename)
+            .then(res => res.json())
+            .then(data => {
+                if (data) setupPanel(data); // Update panel even in UML mode
+            }).catch(err => console.error("Error loading JSON for panel in UML mode:", err));
+    }
+}
+
+// --- Function to fetch and update file list ---
+function loadJsonFileList() {
+  fetch('/list-json')
+    .then(response => response.json())
+    .then(files => {
+      updateGraphDataDropdown(files);
+      const jsonSelect = document.getElementById('graphDataFile');
+      // Load the content for the initially selected file (respecting current view mode)
+      if (jsonSelect.value) {
+        loadContentForFile(jsonSelect.value);
+      } else {
+        // No files available, clear content areas
+        Graph.graphData({ nodes: [], links: [] }); // Clear graph
+        setupPanel({ nodes: [], links: [] }); // Clear panel
+        umlImage.src = '';
+        umlImage.alt = 'No analysis results found.';
+        setCurrentGraphFile(null);
+      }
+    })
+    .catch(err => {
+        console.error('Error fetching JSON file list:', err);
+        // Handle error state in UI
+        updateGraphDataDropdown([]);
+        Graph.graphData({ nodes: [], links: [] });
+        setupPanel({ nodes: [], links: [] });
+        umlImage.src = '';
+        umlImage.alt = 'Error loading analysis results.';
+        setCurrentGraphFile(null);
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const folderInput = document.getElementById('folderPath');
   const status = document.getElementById('status');
@@ -55,6 +182,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const orbitStep = 10;
   const rollStep = 0.05;
 
+  const refreshBtn = document.getElementById('refreshButton'); // Use new ID
+  const jsonSelect = document.getElementById('graphDataFile'); // Use new ID
+  const focusSelectedBtn = document.getElementById('focusSelectedBtn');
+  const showAllBtn = document.getElementById('showAllBtn');
+  const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+
   analyzeBtn.addEventListener('click', () => {
     const folderPath = folderInput.value.trim();
     if (!folderPath) {
@@ -63,20 +196,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     status.textContent = 'Analyzing...';
+    analyzeBtn.disabled = true; // Disable button during analysis
+    refreshBtn.disabled = true; // Disable refresh too
+
+    // Use FormData for sending folder path
+    const formData = new FormData();
+    formData.append('folderPath', folderPath);
 
     fetch('/upload', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ folderPath })
+      body: formData // Send FormData object
     })
       .then(res => res.json())
       .then(res => {
         if (res.status === 'ok') {
-          status.textContent = 'Analysis complete. Loading graph...';
-          setTimeout(() => {
-            loadGraphData();
-            status.textContent = '';
-          }, 1000);
+          status.textContent = 'Analysis complete. Updating file list...';
+          updateGraphDataDropdown(res.files);
+          // Automatically load the newest file (first in the sorted list)
+          if (res.files && res.files.length > 0) {
+            loadContentForFile(res.files[0]);
+          }
+          status.textContent = ''; // Clear status
         } else {
           status.textContent = `Error: ${res.message}`;
         }
@@ -84,6 +224,10 @@ document.addEventListener('DOMContentLoaded', () => {
       .catch(err => {
         status.textContent = 'Request failed.';
         console.error(err);
+      })
+      .finally(() => {
+        analyzeBtn.disabled = false; // Re-enable button
+        refreshBtn.disabled = false; // Re-enable refresh
       });
   });
 
@@ -92,7 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Reset camera position
     Graph.cameraPosition({ x: 0, y: 0, z: 300 }, { x: 0, y: 0, z: 0 }, 1000);
-  
+
     // Reset "up" vector (clears roll/tilt)
     cam.up.set(0, 1, 0);
   });
@@ -122,34 +266,84 @@ document.addEventListener('DOMContentLoaded', () => {
     cameraInfo.textContent = `Camera: x=${cam.position.x.toFixed(1)}, y=${cam.position.y.toFixed(1)}, z=${cam.position.z.toFixed(1)} | up: (${cam.up.x.toFixed(2)}, ${cam.up.y.toFixed(2)}, ${cam.up.z.toFixed(2)})`;
   }, 500);
 
-  // JSON file select logic
-  const refreshBtn = document.getElementById('refreshJsonListBtn');
-  const jsonSelect = document.getElementById('jsonFileSelect');
-
+  // --- Refresh Button Listener ---
   refreshBtn.addEventListener('click', loadJsonFileList);
+
+  // --- Dropdown Change Listener ---
   jsonSelect.addEventListener('change', () => {
     const selectedFile = jsonSelect.value;
-    loadGraphData(selectedFile);
+    if (selectedFile) {
+      loadContentForFile(selectedFile);
+    }
   });
 
-  loadJsonFileList();
-  setTimeout(() => {
-    if (jsonSelect.value) loadGraphData(jsonSelect.value);
-  }, 500);
-});
+  // --- Filter Button Listeners ---
+  focusSelectedBtn.addEventListener('click', () => {
+    if (currentViewMode !== '3d') return; // Only works in 3D mode
+    const selectedIds = getSelectedNodeIds(); // Get array of selected IDs
 
-function loadJsonFileList() {
-  fetch('/list-json')
-    .then(response => response.json())
-    .then(files => {
-      const jsonSelect = document.getElementById('jsonFileSelect');
-      jsonSelect.innerHTML = '';
-      files.forEach(file => {
-        const option = document.createElement('option');
-        option.value = file;
-        option.textContent = file;
-        jsonSelect.appendChild(option);
-      });
-    })
-    .catch(err => console.error('Error fetching JSON file list:', err));
-}
+    if (selectedIds.length === 0 || !originalGraphData) {
+        alert("Please select one or more items from the list first, or ensure graph data is loaded.");
+        return;
+    }
+
+    const selectedIdsSet = new Set(selectedIds); // Use a Set for efficient lookup
+    const linksToShow = [];
+
+    // Filter links: Keep only those where BOTH source and target are selected
+    originalGraphData.links.forEach((link) => {
+        const sourceId = typeof link.source === 'object' && link.source !== null ? link.source.id : link.source;
+        const targetId = typeof link.target === 'object' && link.target !== null ? link.target.id : link.target;
+
+        const sourceSelected = selectedIdsSet.has(sourceId);
+        const targetSelected = selectedIdsSet.has(targetId);
+
+        if (sourceSelected && targetSelected) {
+            linksToShow.push(link);
+        }
+    });
+
+    // Filter nodes: Keep only the selected nodes
+    const filteredNodes = originalGraphData.nodes.filter(node => selectedIdsSet.has(node.id));
+
+    // Create the filtered data object
+    const filteredData = {
+        nodes: filteredNodes,
+        links: linksToShow,
+        analysisSourcePath: originalGraphData.analysisSourcePath // Keep original path info
+    };
+
+    Graph.graphData(filteredData); // Update graph with the filtered data
+  });
+
+  showAllBtn.addEventListener('click', () => {
+    if (currentViewMode !== '3d') return; // Only works in 3D mode
+    if (originalGraphData) {
+        Graph.graphData(originalGraphData); // Reload original full data
+        clearSelection();
+    } else {
+        alert("No graph data loaded to show.");
+    }
+  });
+
+  clearSelectionBtn.addEventListener('click', () => {
+    clearSelection();
+  });
+
+  // --- View Mode Change Listeners ---
+  viewMode3DRadio.addEventListener('change', () => {
+    if (viewMode3DRadio.checked) {
+      setViewMode('3d');
+    }
+  });
+
+  viewModeUMLRadio.addEventListener('change', () => {
+    if (viewModeUMLRadio.checked) {
+      setViewMode('uml');
+    }
+  });
+
+  // --- Initial Load ---
+  setViewMode(currentViewMode); // Set initial view based on default
+  loadJsonFileList(); // Load file list and potentially the first graph on page load
+});
