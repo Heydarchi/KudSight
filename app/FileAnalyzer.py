@@ -59,7 +59,7 @@ class FileAnalyzer(AbstractAnalyzer):
         else:
             print("No classes found to generate consolidated UML.")
 
-        self.generateData(listOfClassNodes)
+        self.generateData(listOfClassNodes, targetPath)  # Pass targetPath here
 
     def get_class_analyzer(self, language):
         if language == FileTypeEnum.JAVA:
@@ -72,9 +72,10 @@ class FileAnalyzer(AbstractAnalyzer):
             return CSharpClassAnalyzer()
         return None
 
-    def generateData(self, listOfClassNodes):
+    def generateData(self, listOfClassNodes, targetPath):
         dataGenerator = DataGenerator()
-        dataGenerator.generateData(listOfClassNodes)
+        # Pass targetPath to the generator's method
+        dataGenerator.generateData(listOfClassNodes, targetPath)
 
     def detectLang(self, fileName):
         if fileName.endswith(".java"):

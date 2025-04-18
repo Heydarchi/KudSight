@@ -82,18 +82,33 @@ input[type="text"] {
 #json-select-container label {
   font-weight: bold;
   margin-bottom: 6px;
+  color: #ccc; /* Ensure label color matches */
 }
 
-#jsonFileSelect,
-#refreshJsonListBtn {
+/* --- Start Change: Style dropdown and refresh button --- */
+#graphDataFile, /* Target the select dropdown */
+#refreshButton { /* Target the refresh button */
   width: 100%;
-  margin-bottom: 6px;
+  box-sizing: border-box; /* Include padding and border in width */
+  margin-bottom: 8px; /* Add consistent margin */
   padding: 6px 10px;
   border-radius: 4px;
-  border: 1px solid #444;
-  background: #222;
-  color: #eee;
+  border: 1px solid #444; /* Darker border */
+  background: #222; /* Dark background */
+  color: #eee; /* Light text */
 }
+
+#refreshButton {
+  cursor: pointer; /* Ensure button cursor */
+  background: #333; /* Match other buttons */
+  border: 1px solid #555; /* Match other buttons */
+  transition: background 0.2s; /* Add hover transition */
+}
+
+#refreshButton:hover {
+  background: #444; /* Match other button hover */
+}
+/* --- End Change --- */
 
 #panel-header {
   margin-bottom: 14px;
@@ -138,6 +153,32 @@ input[type="text"] {
 #panel-list li:hover {
   background-color: #2a2a2a;
 }
+
+/* Start Change: Style for selected item and filter buttons */
+#panel-list li.active {
+  background-color: #004080; /* Highlight color for selected item */
+  color: #fff;
+}
+
+#filter-controls {
+  margin-top: 10px;
+  display: flex;
+  /* Start Change: Arrange buttons vertically */
+  flex-direction: column;
+  /* End Change */
+  gap: 5px;
+}
+
+.btn-small {
+  padding: 4px 8px;
+  font-size: 12px;
+  /* Start Change: Remove flex-grow, set width to 100% */
+  /* flex-grow: 1; */ /* Remove this */
+  width: 100%;
+  box-sizing: border-box; /* Ensure padding doesn't overflow */
+  /* End Change */
+}
+/* End Change */
 
 #panel-details {
   font-size: 14px;

@@ -25,9 +25,9 @@
         <label >KudSight Version: {{ version }}</label>
         <label ></label>
         <label ></label>
-        <label for="jsonFileSelect">Graph Data File:</label>
-        <select id="jsonFileSelect"></select>
-        <button id="refreshJsonListBtn" class="btn">⟳ Refresh</button>
+        <label for="graphDataFile">Graph Data File:</label>
+        <select id="graphDataFile"></select>
+        <button id="refreshButton" class="btn">⟳ Refresh</button>
       </div>
     
       <div id="panel-header">
@@ -41,6 +41,11 @@
       <div id="panel-list">
         <strong>Items</strong>
         <ul id="itemList"></ul>
+        <div id="filter-controls">
+            <button id="focusSelectedBtn" class="btn btn-small">Focus on Selected</button>
+            <button id="clearSelectionBtn" class="btn btn-small">Clear Selection</button>
+            <button id="showAllBtn" class="btn btn-small">Show All</button>
+        </div>
       </div>
     
       <div id="panel-details">

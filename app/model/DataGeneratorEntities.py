@@ -38,6 +38,7 @@ class Dependency:
 class GraphData:
     nodes: List = field(default_factory=list)
     links: List = field(default_factory=list)
+    analysisSourcePath: Optional[str] = None
 
     def _normalize_id(self, node_id: str) -> str:
         """Return the ID as is. Assumes IDs are consistently generated qualified names."""

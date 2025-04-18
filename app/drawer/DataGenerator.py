@@ -19,19 +19,20 @@ class DataGenerator:
             print(f"Warning: Could not instantiate ClassUmlDrawer for filtering: {e}")
             self._uml_drawer_for_filtering = None
 
-    def generateData(self, listOfClassNodes: list[ClassNode]):
+    # Ensure this signature accepts targetPath
+    def generateData(self, listOfClassNodes: list[ClassNode], targetPath: str):
+        # --- Start Change: Store original path ---
+        self.graphData.analysisSourcePath = targetPath
+        # --- End Change ---
+
         # --- Start Change: Build lookup maps ---
         qualified_name_map: Dict[str, ClassNode] = {}
-        simple_name_map: Dict[str, List[str]] = (
-            {}
-        )  # Map simple name to list of qualified names
+        simple_name_map: Dict[str, List[str]] = {}
 
         for node in listOfClassNodes:
             qualified_name = self._get_qualified_name(node)
-            if qualified_name:  # Ensure we have a valid name
+            if qualified_name:
                 qualified_name_map[qualified_name] = node
-
-                # Use the simple name extracted by the analyzer
                 simple_name = node.name
                 if simple_name:
                     if simple_name not in simple_name_map:
@@ -40,18 +41,53 @@ class DataGenerator:
         # --- End Change ---
 
         for node in listOfClassNodes:
-            # --- Start Change: Pass maps to dumpClass ---
+            # Pass maps to dumpClass
             self.dumpClass(node, qualified_name_map, simple_name_map)
-            # --- End Change ---
 
         self.graphData.add_blank_classes()
         self.graphData.remove_duplicates()
 
-        json_output = self.graphData.to_json()
+        json_output = (
+            self.graphData.to_json()
+        )  # This will now include the analysisSourcePath
 
+        sanitized_path_prefix = self._sanitize_path_for_filename(
+            targetPath
+        )  # This now uses the full path
         date_time = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
-        filePath = "static/out/data" + date_time + ".json"
+        filePath = f"static/out/{sanitized_path_prefix}_{date_time}.json"
+
         self.writeToFile(filePath, json_output)
+
+    def _sanitize_path_for_filename(self, path: str) -> str:
+        """Sanitizes a full path string to be suitable for use in a filename."""
+        if not path:
+            return "analysis"
+
+        # --- Start Change: Process full path ---
+        # Replace drive colon first (e.g., C:)
+        sanitized = path.replace(":", "_")
+        # Replace path separators with underscores
+        sanitized = sanitized.replace("\\", "_").replace("/", "_")
+        # Remove or replace other invalid filename characters
+        sanitized = re.sub(
+            r'[<>"]', "_", sanitized
+        )  # Removed /\|?* as they were handled by separator replacement
+        # Replace sequences of underscores with a single one
+        sanitized = re.sub(r"_+", "_", sanitized)
+        # Remove leading/trailing underscores
+        sanitized = sanitized.strip("_")
+        # --- End Change ---
+
+        # Limit length if necessary (e.g., 100 chars for full path)
+        max_len = 100
+        if len(sanitized) > max_len:
+            # Try to keep the end part of the path
+            sanitized = sanitized[-max_len:]
+            # Remove any partial segment at the beginning
+            sanitized = re.sub(r"^[^_]*_", "", sanitized, count=1)
+
+        return sanitized if sanitized else "analysis"
 
     def _get_qualified_name(self, classInfo: ClassNode) -> str:
         """Generates the fully qualified name."""
@@ -126,14 +162,13 @@ class DataGenerator:
         else:
             return name_str
 
-    # --- Start Change: Modify dumpClass signature ---
+    # Ensure dumpClass signature accepts the maps
     def dumpClass(
         self,
         classInfo: ClassNode,
         qualified_name_map: Dict[str, ClassNode],
         simple_name_map: Dict[str, List[str]],
     ):
-        # --- End Change ---
         qualified_name = self._get_qualified_name(classInfo)
         print(f"DataGenerator dumping: {qualified_name}")
         # print(f"  - Simple Name: {classInfo.name}") # Keep simple name if needed
@@ -164,6 +199,11 @@ class DataGenerator:
         for relation in classInfo.relations:
             try:
                 target_name_original = relation.name  # Keep original name from relation
+                # --- Start Debug ---
+                print(
+                    f"    - Original Relation: {relation.relationship.name} -> '{target_name_original}'"
+                )
+                # --- End Debug ---
                 target_name_full = target_name_original  # Default target for link
 
                 is_inheritance = relation.relationship in [
@@ -177,6 +217,10 @@ class DataGenerator:
                     target_name_full = self._get_qualified_name_from_string(
                         target_name_original, classInfo.package
                     )
+                    # --- Start Debug ---
+                    if target_name_full != target_name_original:
+                        print(f"      - Qualified/Std Stripped: '{target_name_full}'")
+                    # --- End Debug ---
                 # Else (unqualified inheritance): target_name_full remains the original unqualified name
 
                 # --- Start Change: Resolve target against known classes ---
@@ -191,16 +235,32 @@ class DataGenerator:
                         if len(possible_matches) == 1:
                             # Found a unique qualified match, use it!
                             resolved_target = possible_matches[0]
+                            # --- Start Debug ---
                             print(
-                                f"    - Resolved unqualified '{target_name_full}' to '{resolved_target}'"
+                                f"      - Resolved unqualified '{target_name_full}' to '{resolved_target}'"
                             )
+                            # --- End Debug ---
                         elif len(possible_matches) > 1:
                             # Ambiguous match, keep original target, let blank node handle it
+                            # --- Start Debug ---
                             print(
-                                f"    - Ambiguous match for unqualified '{target_name_full}', keeping as is."
+                                f"      - Ambiguous match for unqualified '{target_name_full}', keeping as is."
                             )
+                            # --- End Debug ---
                         # Else (len == 0): No match found, likely a template param or external type, keep original target
+                        # --- Start Debug ---
+                        else:
+                            print(
+                                f"      - Unqualified '{target_name_full}' not found in simple map."
+                            )
+                        # --- End Debug ---
                 # Else (target_name_full is in qualified_name_map): Already resolved, use it.
+                # --- Start Debug ---
+                else:
+                    print(
+                        f"      - Target '{target_name_full}' found directly in qualified map."
+                    )
+                # --- End Debug ---
 
                 # --- End Change ---
 
@@ -210,6 +270,10 @@ class DataGenerator:
                     should_ignore = self._uml_drawer_for_filtering._should_ignore_type(
                         resolved_target
                     )
+                    # --- Start Debug ---
+                    if should_ignore:
+                        print(f"      - Ignoring type: '{resolved_target}'")
+                    # --- End Debug ---
 
                 if not should_ignore:
                     dependency = Dependency()
@@ -218,14 +282,16 @@ class DataGenerator:
                     dependency.target = resolved_target  # Use the resolved name
                     # --- End Change ---
                     dependency.relation = relation.relationship.name.lower()
+                    # --- Start Debug ---
                     print(
-                        f"    - Adding link: {dependency.source} -> {dependency.target} ({dependency.relation})"
+                        f"    -> Adding Link: {dependency.source} -> {dependency.target} ({dependency.relation})"
                     )
+                    # --- End Debug ---
                     self.graphData.links.append(dependency)
-                else:
-                    print(
-                        f"    - Skipping ignored/primitive relation: {classData.id} -> {resolved_target} ({relation.relationship.name.lower()})"
-                    )
+                # --- Start Debug ---
+                # else: # Already printed above
+                #    print(f"    - Skipping ignored/primitive relation: {classData.id} -> {resolved_target} ({relation.relationship.name.lower()})")
+                # --- End Debug ---
 
             except AttributeError as e:
                 print(f"    - Error processing relation {relation}: {e}")

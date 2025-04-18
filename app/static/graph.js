@@ -8,6 +8,9 @@ export const ARROW_COLOR = '#ffffff';
 export const LINK_WIDTH = 0.5;
 export const LINK_COLOR = '#ffffff';
 
+// Add variable to store original data
+export let originalGraphData = null;
+
 export const Graph = ForceGraph3D()(document.getElementById('3d-graph'))
   .nodeThreeObject(createUMLNode)
   .nodeLabel(getNodeLabel)
@@ -26,6 +29,7 @@ export const Graph = ForceGraph3D()(document.getElementById('3d-graph'))
 
 export function loadGraphData(filename = 'data.json') {
   setCurrentGraphFile(filename);
+  originalGraphData = null; // Reset original data on new load
 
   fetch('/out/' + filename)
     .then(res => res.json())
@@ -61,6 +65,8 @@ export function loadGraphData(filename = 'data.json') {
             data.nodes.find(n => n.id === link.source) &&
             data.nodes.find(n => n.id === link.target)
           );
+          // Store original data
+          originalGraphData = data;
           Graph.graphData(data);
           setupPanel(data);
           const categorySelect = document.getElementById('categorySelect');

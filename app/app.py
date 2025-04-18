@@ -2,6 +2,7 @@ from flask import Flask, request, render_template, jsonify, send_from_directory
 import os
 from werkzeug.utils import secure_filename
 from FileAnalyzer import FileAnalyzer
+import json
 
 UPLOAD_FOLDER = "uploads"
 RESULT_FOLDER = "static/out"
@@ -32,7 +33,13 @@ def upload_folder():
         print(f"Analyzing: {folder_path}")
         fileAnalyzer = FileAnalyzer()
         fileAnalyzer.analyze(folder_path, None)
-        return jsonify({"status": "ok"})
+        json_files = [
+            f
+            for f in os.listdir(RESULT_FOLDER)
+            if (f.endswith(".json") and ".pos" not in f)
+        ]
+        json_files.sort(reverse=True)  # Sort newest first
+        return jsonify({"status": "ok", "files": json_files})
     except Exception as e:
         print(f"Error during analysis: {e}")
         return jsonify({"status": "error", "message": str(e)})
@@ -70,6 +77,7 @@ def list_json():
         for f in os.listdir(RESULT_FOLDER)
         if (f.endswith(".json") and ".pos" not in f)
     ]
+    json_files.sort(reverse=True)  # Sort newest first
     return jsonify(json_files)
 
 
@@ -85,8 +93,6 @@ def save_positions():
     try:
         path = os.path.join(RESULT_FOLDER, filename)
         with open(path, "w") as f:
-            import json
-
             json.dump(data, f, indent=2)
         return jsonify({"status": "ok"})
     except Exception as e:
