@@ -17,7 +17,7 @@ class CSharpVariableAnalyzer(AbstractAnalyzer):
 
     def analyze(self, filePath, lang=None, classStr=None):
         listOfVariables = []
-        content = classStr if classStr else FileReader().readFile(filePath)
+        content = classStr if classStr else FileReader().read_file(filePath)
 
         match = re.search(self.pattern, content, flags=re.MULTILINE | re.DOTALL)
         while match:

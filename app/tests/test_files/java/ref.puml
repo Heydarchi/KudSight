@@ -1,0 +1,64 @@
+@startuml
+' Consolidated UML Diagram
+hide empty members
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+package "com.android.systemui.car" {
+interface "com.android.systemui.car.CarDeviceProvisionedController"  {
+#  isCurrentUserFullySetup(): "boolean"
+#  isCurrentUserSetupInProgress(): "boolean"
+}
+class "com.android.systemui.car.CarDeviceProvisionedControllerImpl"  {
+-  ContentObserver mCarSettingsObserver
++  AtomicBoolean mInitted
+-  SecureSettings mSecureSettings
+-  Uri mUserSetupInProgressUri
+#  Int temp
++  CarDeviceProvisionedControllerImpl(SecureSettings, GlobalSettings, UserTracker, DumpManager, Handler, Handler, Executor)
++  addCallback(DeviceProvisionedListener)
++  init()
++  isCurrentUserSetupInProgress(): "boolean"
++  isUserSetupInProgress("int"): "boolean"
+-  notifyUserSetupInProgressChanged()
+}
+class "com.android.systemui.car.TestClass"  {
+#  InnerTestClass innerTC
+}
+}
+
+package "com.kudsight.samples" {
+class "com.kudsight.samples.DataProcessor<R>"  {
+-  "Function<Object, R>" processor
++  DataProcessor("Function<Object, R>")
++  process("Object"): R
+}
+interface "com.kudsight.samples.DataTransformer<I, O>"  {
+}
+class "com.kudsight.samples.StringProcessor"  {
++  StringProcessor()
++  transform("String"): "Integer"
++  transformBatch("List<String>"): "List<Integer>"
+}
+}
+
+' Relationships
+"com.android.systemui.car.CarDeviceProvisionedController" --|> "com.android.systemui.car.DeviceProvisionedController"
+"com.android.systemui.car.CarDeviceProvisionedControllerImpl" --|> "com.android.systemui.car.DeviceProvisionedControllerImpl"
+"com.android.systemui.car.CarDeviceProvisionedControllerImpl" ..> "com.android.systemui.car.AtomicBoolean"
+"com.android.systemui.car.CarDeviceProvisionedControllerImpl" ..> "com.android.systemui.car.ContentObserver"
+"com.android.systemui.car.CarDeviceProvisionedControllerImpl" ..> "com.android.systemui.car.DeviceProvisionedListener"
+"com.android.systemui.car.CarDeviceProvisionedControllerImpl" ..> "com.android.systemui.car.DumpManager"
+"com.android.systemui.car.CarDeviceProvisionedControllerImpl" ..> "com.android.systemui.car.Executor"
+"com.android.systemui.car.CarDeviceProvisionedControllerImpl" ..> "com.android.systemui.car.GlobalSettings"
+"com.android.systemui.car.CarDeviceProvisionedControllerImpl" ..> "com.android.systemui.car.Handler"
+"com.android.systemui.car.CarDeviceProvisionedControllerImpl" ..> "com.android.systemui.car.Int"
+"com.android.systemui.car.CarDeviceProvisionedControllerImpl" ..> "com.android.systemui.car.SecureSettings"
+"com.android.systemui.car.CarDeviceProvisionedControllerImpl" ..> "com.android.systemui.car.Uri"
+"com.android.systemui.car.CarDeviceProvisionedControllerImpl" ..> "com.android.systemui.car.UserTracker"
+"com.android.systemui.car.CarDeviceProvisionedControllerImpl" ..|> "com.android.systemui.car.CarDeviceProvisionedController"
+"com.android.systemui.car.TestClass" ..> "com.android.systemui.car.InnerTestClass"
+"com.android.systemui.car.TestClass" ..|> "com.android.systemui.car.Haha"
+"com.kudsight.samples.DataProcessor<R>" ..> "com.kudsight.samples.Function"
+"com.kudsight.samples.StringProcessor" --|> "com.kudsight.samples.ComplexGenericsString, Integer"
+"com.kudsight.samples.StringProcessor" ..|> "ComplexGenerics.DataTransformerString, Integer"
+@enduml

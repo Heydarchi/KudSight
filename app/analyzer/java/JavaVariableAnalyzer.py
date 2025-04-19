@@ -22,7 +22,7 @@ class JavaVariableAnalyzer(AbstractAnalyzer):
 
     def analyze(self, filePath, lang=None, classStr=None):
         listOfVariables = []
-        content = classStr if classStr else FileReader().readFile(filePath)
+        content = classStr if classStr else FileReader().read_file(filePath)
 
         # Analyze line by line to avoid issues with multi-line declarations (though less common for fields)
         for line in content.splitlines():

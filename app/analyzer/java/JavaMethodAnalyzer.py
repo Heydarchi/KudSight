@@ -39,7 +39,7 @@ class JavaMethodAnalyzer(AbstractAnalyzer):
         )
 
     def analyze(self, filePath, lang=None, classStr=None):
-        content = classStr if classStr else FileReader().readFile(filePath)
+        content = classStr if classStr else FileReader().read_file(filePath)
         methods = []
         current_pos = 0
 
@@ -170,8 +170,10 @@ class JavaMethodAnalyzer(AbstractAnalyzer):
         for char in params_str:
             if char == "<":
                 generic_level += 1
+                processed_params_str += char  # Keep the angle bracket
             elif char == ">":
                 generic_level -= 1
+                processed_params_str += char  # Keep the angle bracket
             elif char == "," and generic_level > 0:
                 processed_params_str += "@@COMMA@@"  # Placeholder
             else:

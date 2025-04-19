@@ -20,7 +20,7 @@ class CppVariableAnalyzer(AbstractAnalyzer):
             r"(?!using |typedef |namespace |template |friend |virtual |explicit |inline |class |struct |enum |public:|private:|protected:|[^;]*\([^;]*\)\s*[:{])"
             # Capture the full type, including keywords like static, const, namespaces, templates, *, &
             r"((?:(?:static|const|constexpr|mutable|volatile|typename)\s+)*"  # Keywords before type
-            r"[a-zA-Z_][a-zA-Z0-9_:]*(?:<[^>]*>)?(?:\s*[*&])*\s*"  # Core type name with potential template, pointer/ref
+            r"[a-zA-Z_][a-zA-Z0-9_:]*(?:<(?:[^<>]|<(?:[^<>]|<[^<>]*>)*>)*>)?(?:\s*[*&])*\s*"  # Core type name with improved nested template support
             r"(?:\s*(?:const|volatile)\s*)*"  # Keywords after type name
             r"(?:\s*[*&])*\s*)"  # Pointer/ref after keywords
             # Capture the variable name
@@ -34,7 +34,7 @@ class CppVariableAnalyzer(AbstractAnalyzer):
 
     def analyze(self, filePath, lang=None, classStr=None):
         listOfVariables = []
-        content = classStr if classStr else FileReader().readFile(filePath)
+        content = classStr if classStr else FileReader().read_file(filePath)
 
         current_access = AccessEnum.PRIVATE  # Default for C++ classes
 

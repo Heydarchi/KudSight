@@ -28,6 +28,7 @@ class JavaClassAnalyzer(AbstractAnalyzer):
         # Pattern to find class or interface definitions, capturing modifiers, name, generics, extends, implements
         # Make extends/implements capture non-greedy and handle whitespace/newlines better.
         self.pattern = [
+            r"(?:/\*[^*]*\*/\s*)?"  # Optional comment before class declaration
             r"^\s*(?:(public|private|protected)\s+)?((?:(?:static|abstract|final|sealed|non-sealed)\s+)*)"  # Modifiers (1, 2)
             r"(class|interface|enum|record)\s+"  # Type (3)
             r"([a-zA-Z_][a-zA-Z0-9_]*)"  # Name (4)

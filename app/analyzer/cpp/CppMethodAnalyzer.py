@@ -29,7 +29,7 @@ class CppMethodAnalyzer(AbstractAnalyzer):
 
     def analyze(self, filePath, lang=None, classStr=None):
         if classStr is None:
-            content = FileReader().readFile(filePath)
+            content = FileReader().read_file(filePath)
             full_content_for_boundaries = content
         else:
             content = classStr
@@ -199,8 +199,10 @@ class CppMethodAnalyzer(AbstractAnalyzer):
         for char in params_str:
             if char == "<":
                 level += 1
+                processed_str += char  # Keep the angle bracket
             elif char == ">":
                 level -= 1
+                processed_str += char  # Keep the angle bracket
             elif char == "," and level > 0:
                 processed_str += "@@COMMA@@"
             else:
