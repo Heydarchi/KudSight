@@ -4,27 +4,34 @@
  **This app is experimental and has not fully tested !**
 </br>
 
-**KudSight** is a Python-based static analysis tool that helps visualize **class relationships** in source code across several programming languages.
 
-It supports extracting inheritance, implementation, and composition relations, and can render UML-style diagrams in browser..
+**KudSight** is an experimental, Python-based static analysis tool that helps developers explore class relationships in source code using interactive 3D and UML-style diagrams — all directly in the browser.
 
-
-## Features
-
-- Language Support: Java, C++, C#, Kotlin
-- Class relationship extraction: inheritance, implementation, dependencies
-- Web-based UI and CLI
-- Dockerized for cross-platform use
+> 🔍 Supports **Java** and **C++** as primary languages, with early support for **C#** and **Kotlin**.
 
 
-## Supported Languages
+## 🚀 v0.6.0-beta Highlights (April 19, 2025)
 
-- Java (primary support)
-- C++ (partial support)
-- C# (partial support)
-- Kotlin (experimental)
+-  Enhanced support for **Java** and **C++**
+-  Toggle between **3D Graph** and **UML-style** diagram rendering
+-  **Dark/Light mode switching**
+-  **Auto-refresh** analysis results
+-  **Selective class rendering**
+-  Export diagrams as **PNG** or **PlantUML (.puml)**
+-  Improved UI and CSS
+-  Updated Docker image for easy deployment
 
-> Java, C++ and C# support is most stable. Other languages are work-in-progress. Contributions welcome!
+
+## 🔧 Core Features
+
+| Category | Description |
+|----------|-------------|
+|  Language Support | - Java (primary)<br>- C++ (stable)<br>- C# and Kotlin (experimental) |
+|  Code Analysis | - Extracts Inheritance, Implementation, and Dependency relations<br>- Supports package/module groupings |
+|  Visualization | - 3D Graph rendering (with camera controls)<br>- UML-style layout toggle<br>- Selective node rendering |
+|  UI & UX | - Sidebar filtering by Category and Items<br>- Node focus, reset, zoom/pan controls<br>- Dark/Light theme toggle |
+|  Export | - PNG and PlantUML output<br>- Screenshot functionality<br>- Node position/layout persistence |
+|  Tooling | - Web-based UI and CLI options<br>- Dockerized for easy, cross-platform use |
 
 
 
