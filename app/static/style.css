@@ -118,20 +118,6 @@ canvas {
   transform: translateX(-50%) translateY(0);
 }
 
-/* Theme toggle icons transition */
-#themeToggle svg {
-  transition: opacity 0.2s;
-}
-
-.theme-light-icon, .theme-dark-icon {
-  transition: opacity 0.3s ease;
-}
-
-/* Fix for inconsistent icon display in Firefox */
-.dark #themeToggle svg.hidden {
-  display: none;
-}
-
 /* Additional animation for toggle switch */
 #themeToggle:active span {
   width: 24px;
