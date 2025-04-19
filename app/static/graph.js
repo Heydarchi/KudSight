@@ -56,7 +56,7 @@ export function loadGraphData(filename = 'data.json') {
           });
         })
         .catch(() => {
-          console.warn('No position file found for', filename);
+          console.warn(`No position file found for ${filename}`);
         })
         .finally(() => {
           data.links = (data.links || []).filter(link =>

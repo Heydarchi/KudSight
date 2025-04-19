@@ -2,6 +2,7 @@
 import * as THREE from 'https://esm.sh/three';
 import { loadGraphData, Graph, originalGraphData } from './graph.js';
 import { getSelectedNodeIds, clearSelection } from './panel.js';
+import { styleFormElements } from './tailwind-helpers.js';
 
 let currentGraphFile = null; // Start with null
 let currentViewMode = '3d'; // Default view mode
@@ -133,7 +134,7 @@ function loadContentForFile(filename) {
 
 // --- Function to fetch and update file list ---
 function loadJsonFileList() {
-  fetch('/list-json')
+  return fetch('/list-json')
     .then(response => response.json())
     .then(files => {
       updateGraphDataDropdown(files);
@@ -151,18 +152,21 @@ function loadJsonFileList() {
       }
     })
     .catch(err => {
-        console.error('Error fetching JSON file list:', err);
-        // Handle error state in UI
-        updateGraphDataDropdown([]);
-        Graph.graphData({ nodes: [], links: [] });
-        setupPanel({ nodes: [], links: [] });
-        umlImage.src = '';
-        umlImage.alt = 'Error loading analysis results.';
-        setCurrentGraphFile(null);
+      console.error('Error fetching JSON file list:', err);
+      // Handle error state in UI
+      updateGraphDataDropdown([]);
+      Graph.graphData({ nodes: [], links: [] });
+      setupPanel({ nodes: [], links: [] });
+      umlImage.src = '';
+      umlImage.alt = 'Error loading analysis results.';
+      setCurrentGraphFile(null);
     });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Apply Tailwind styles to form elements when page loads
+  styleFormElements();
+
   const folderInput = document.getElementById('folderPath');
   const status = document.getElementById('status');
   const analyzeBtn = document.getElementById('analyzeBtn');
@@ -195,7 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    status.textContent = 'Analyzing...';
+    status.innerHTML = '<span class="inline-flex items-center"><svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Analyzing...</span>';
     analyzeBtn.disabled = true; // Disable button during analysis
     refreshBtn.disabled = true; // Disable refresh too
 
@@ -267,7 +271,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }, 500);
 
   // --- Refresh Button Listener ---
-  refreshBtn.addEventListener('click', loadJsonFileList);
+  refreshBtn.addEventListener('click', () => {
+    refreshBtn.disabled = true;
+    refreshBtn.innerHTML = '<span class="animate-spin inline-block mr-1">⟳</span> Loading...';
+    
+    loadJsonFileList().finally(() => {
+      refreshBtn.disabled = false;
+      refreshBtn.innerHTML = '<span class="inline-block mr-1">⟳</span> Refresh';
+    });
+  });
 
   // --- Dropdown Change Listener ---
   jsonSelect.addEventListener('change', () => {

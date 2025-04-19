@@ -1,293 +1,42 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
 
 body {
-  margin: 0;
   font-family: 'Inter', sans-serif;
-  background-color: #111;
-  color: #eee;
   overflow: hidden;
 }
 
-/* Top Control Bar */
-#controls {
-  padding: 12px 20px;
-  background: #1a1a1a;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 15px; /* Slightly increase gap */
-  z-index: 10;
-  border-bottom: 1px solid #333;
-}
-
-input[type="text"] {
-  padding: 6px 10px;
-  border-radius: 4px;
-  border: 1px solid #444;
-  background: #222;
-  color: #eee;
-  width: 400px;
-}
-
-.btn {
-  padding: 6px 12px;
-  background: #333;
-  border: 1px solid #555;
-  border-radius: 4px;
-  color: #eee;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.btn:hover {
-  background: #444;
-}
-
-/* Start Change: View Mode Switcher Styles */
-#view-mode-switcher {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-left: 20px; /* Add some space */
-  background-color: #2a2a2a;
-  padding: 4px 8px;
-  border-radius: 4px;
-}
-
-#view-mode-switcher label {
-  margin-right: 5px;
-  font-size: 13px;
-  color: #ccc;
-}
-
-#view-mode-switcher input[type="radio"] {
-  margin-right: 2px;
-}
-/* End Change */
-
-#cameraInfo {
-  font-size: 12px;
-  font-family: monospace;
-  color: #aaa;
-  margin-left: auto;
-}
-
-/* Main layout */
-#main-container {
-  display: flex;
-  height: calc(100vh - 60px);
-  position: relative;
-}
-
-/* Left Panel */
-#side-panel {
-  width: 260px;
-  min-width: 240px;
-  max-width: 300px;
-  background-color: rgba(20, 20, 20, 0.95);
-  border-right: 1px solid #333;
-  display: flex;
-  flex-direction: column;
-  padding: 16px;
-  overflow: auto;
-  color: #ccc;
-  position: relative;
-  z-index: 1000;
-  height: 100%; /* Ensure panel takes full height */
-  box-sizing: border-box; /* Include padding in height */
-}
-
-#json-select-container {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 14px;
-}
-
-#json-select-container label {
-  font-weight: bold;
-  margin-bottom: 6px;
-  color: #ccc; /* Ensure label color matches */
-}
-
-/* --- Start Change: Style dropdown and refresh button --- */
-#graphDataFile, /* Target the select dropdown */
-#refreshButton { /* Target the refresh button */
-  width: 100%;
-  box-sizing: border-box; /* Include padding and border in width */
-  margin-bottom: 8px; /* Add consistent margin */
-  padding: 6px 10px;
-  border-radius: 4px;
-  border: 1px solid #444; /* Darker border */
-  background: #222; /* Dark background */
-  color: #eee; /* Light text */
-}
-
-#refreshButton {
-  cursor: pointer; /* Ensure button cursor */
-  background: #333; /* Match other buttons */
-  border: 1px solid #555; /* Match other buttons */
-  transition: background 0.2s; /* Add hover transition */
-}
-
-#refreshButton:hover {
-  background: #444; /* Match other button hover */
-}
-/* --- End Change --- */
-
-#panel-header {
-  margin-bottom: 14px;
-}
-
-#panel-header label {
-  font-weight: bold;
-  display: block;
-  margin-bottom: 6px;
-}
-
-#categorySelect {
-  width: 100%;
-  padding: 6px;
-  background: #222;
-  color: #eee;
-  border: 1px solid #444;
-  border-radius: 4px;
-}
-
-#panel-list strong {
-  display: block;
-  margin-bottom: 6px;
-}
-
-#panel-list ul {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 10px 0;
-  max-height: 200px;
-  overflow-y: auto;
-  border-top: 1px solid #333;
-}
-
-#panel-list li {
-  padding: 6px 8px;
-  border-bottom: 1px solid #333;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-#panel-list li:hover {
-  background-color: #2a2a2a;
-}
-
-/* Start Change: Style for selected item and filter buttons */
-#panel-list li.active {
-  background-color: #004080; /* Highlight color for selected item */
-  color: #fff;
-}
-
-#filter-controls {
-  margin-top: 10px;
-  display: flex;
-  /* Start Change: Arrange buttons vertically */
-  flex-direction: column;
-  /* End Change */
-  gap: 5px;
-}
-
-.btn-small {
-  padding: 4px 8px;
-  font-size: 12px;
-  /* Start Change: Remove flex-grow, set width to 100% */
-  /* flex-grow: 1; */ /* Remove this */
-  width: 100%;
-  box-sizing: border-box; /* Ensure padding doesn't overflow */
-  /* End Change */
-}
-/* End Change */
-
-#panel-details {
-  font-size: 14px;
-  background-color: #181818;
-  padding: 8px;
-  border: 1px solid #333;
-  border-radius: 4px;
-  min-height: 120px;
-  overflow-y: auto;
-}
-
-/* Start Change: Content Area */
-#content-area {
-  flex-grow: 1; /* Take remaining width */
-  position: relative; /* Needed for absolute positioning inside */
-  overflow: hidden; /* Hide overflow */
-  background-color: #111; /* Match body background */
-}
-/* End Change */
-
-/* Graph container */
-#graph-container {
-  width: 100%;
-  height: 100%;
-  position: absolute; /* Position within content-area */
-  top: 0;
-  left: 0;
-  z-index: 0;
-}
-
+/* Override specific 3D graph styles */
 #3d-graph {
   width: 100%;
   height: 100%;
 }
 
-/* Start Change: UML Image Container */
-#uml-image-container {
-  width: 100%;
-  height: 100%;
-  position: absolute; /* Position within content-area */
-  top: 0;
-  left: 0;
-  overflow: auto; /* Allow scrolling for large images */
-  text-align: center; /* Center the image */
-  background-color: #222; /* Slightly different background */
-  padding: 20px;
-  box-sizing: border-box;
-}
-
-#uml-image {
-  max-width: 100%;
-  height: auto; /* Maintain aspect ratio */
-  display: inline-block; /* Needed for centering */
-}
-/* End Change */
-
-/* Right floating panel */
-#right-panel {
-  position: fixed;
-  top: 70px; /* Adjust based on top bar height */
-  right: 10px;
-  width: 200px;
-  background: rgba(30, 30, 30, 0.95);
-  border: 1px solid #444;
-  border-radius: 6px;
-  padding: 10px;
-  z-index: 2000;
-  backdrop-filter: blur(8px);
-  color: #ddd;
-}
-
-#right-panel h4 {
-  margin: 0 0 10px;
-  font-size: 15px;
-  border-bottom: 1px solid #444;
-  padding-bottom: 4px;
-}
-
-#right-panel .btn {
-  width: 100%;
-  margin-bottom: 5px;
-}
-
-/* Start Change: Hidden Class */
+/* Keep hidden class for JS toggling */
 .hidden {
-  display: none !important; /* Use !important to override other display properties */
+  display: none !important;
 }
-/* End Change */
+
+/* Improve form radio buttons */
+input[type="radio"] {
+  accent-color: #4f46e5;
+  width: 14px;
+  height: 14px;
+}
+
+/* Reset specific form element styling */
+select:focus, button:focus, input:focus {
+  outline: 2px solid #4f46e5;
+  outline-offset: 1px;
+}
+
+/* Ensure 3D graph canvas takes up full space */
+canvas {
+  display: block;
+}
+
+/* Fix for long text in the list items */
+#itemList li {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
