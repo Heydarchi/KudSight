@@ -6,6 +6,7 @@ import { styleFormElements } from './tailwind-helpers.js';
 import { initTheme, toggleTheme, THEMES, updateUiForTheme, getNodeColorScheme } from './theme-manager.js';
 import { initAnimations } from './animations.js';
 import { showLoadingSpinner, showToast } from './ui-components.js';
+import { captureScreenshot, downloadFile, downloadImage } from './screenshot-util.js';
 
 let currentGraphFile = null; // Start with null
 let currentViewMode = '3d'; // Default view mode
@@ -347,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Filter nodes: Keep only the selected nodes
-    const filteredNodes = originalGraphData.nodes.filter(node => selectedIdsSet.has(node.id));
+    originalGraphData.nodes.filter(node => selectedIdsSet.has(node.id));
 
     // Create the filtered data object
     const filteredData = {
@@ -428,6 +429,126 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // We don't need to manually update the graph here anymore
       // Theme-manager.js now handles preserving the view
+    });
+  }
+
+  // --- Screenshot button handler ---
+  const screenshotBtn = document.getElementById('screenshotBtn');
+  const contentArea = document.getElementById('content-area');
+  
+  if (screenshotBtn && contentArea) {
+    screenshotBtn.addEventListener('click', () => {
+      // Create a filename based on the current view mode and file
+      let filename = 'kudsight';
+      
+      if (currentGraphFile) {
+        // Extract the base name without extension
+        const baseName = currentGraphFile.replace(/\.json$/, '');
+        filename = `${baseName}-${currentViewMode}`;
+      } else {
+        filename = `kudsight-${currentViewMode}`;
+      }
+      
+      // Add timestamp for uniqueness
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+      filename = `${filename}-${timestamp}.png`;
+      
+      // Get the appropriate container based on current view mode
+      let targetElement = currentViewMode === '3d' 
+        ? document.getElementById('graph-container')
+        : document.getElementById('uml-image-container');
+      
+      // If specific container not found, fall back to content-area
+      if (!targetElement) {
+        targetElement = contentArea;
+      }
+      
+      // Take the screenshot
+      captureScreenshot(targetElement, filename);
+    });
+  }
+
+  // --- Download PNG button handler ---
+  const downloadPngBtn = document.getElementById('downloadPngBtn');
+  if (downloadPngBtn) {
+    downloadPngBtn.addEventListener('click', () => {
+      if (!currentGraphFile) {
+        showToast('No file selected to download', 'warning');
+        return;
+      }
+      
+      const baseName = currentGraphFile.replace(/\.json$/, '');
+      const pngFilename = `${baseName}.png`;
+      const pngPath = `/out/${pngFilename}`;
+      
+      // First check if the file exists
+      fetch(pngPath, { method: 'HEAD' })
+        .then(response => {
+          if (response.ok) {
+            // File exists, download it
+            fetch(pngPath)
+              .then(response => response.blob())
+              .then(blob => {
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = pngFilename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                showToast(`Downloaded ${pngFilename}`, 'success');
+              })
+              .catch(error => {
+                console.error('Error downloading PNG:', error);
+                showToast('Error downloading PNG file', 'error');
+              });
+          } else {
+            showToast(`PNG file not found for ${baseName}`, 'error');
+          }
+        })
+        .catch(error => {
+          console.error('Error checking PNG file:', error);
+          showToast('Error checking PNG file', 'error');
+        });
+    });
+  }
+
+  // --- Download PUML button handler ---
+  const downloadPumlBtn = document.getElementById('downloadPumlBtn');
+  if (downloadPumlBtn) {
+    downloadPumlBtn.addEventListener('click', () => {
+      if (!currentGraphFile) {
+        showToast('No file selected to download', 'warning');
+        return;
+      }
+      
+      const baseName = currentGraphFile.replace(/\.json$/, '');
+      const pumlFilename = `${baseName}.puml`;
+      const pumlPath = `/out/${pumlFilename}`;
+      
+      // First check if the file exists
+      fetch(pumlPath, { method: 'HEAD' })
+        .then(response => {
+          if (response.ok) {
+            // File exists, download it
+            fetch(pumlPath)
+              .then(response => response.text())
+              .then(text => {
+                downloadFile(text, pumlFilename);
+              })
+              .catch(error => {
+                console.error('Error downloading PUML:', error);
+                showToast('Error downloading PUML file', 'error');
+              });
+          } else {
+            showToast(`PUML file not found for ${baseName}`, 'error');
+          }
+        })
+        .catch(error => {
+          console.error('Error checking PUML file:', error);
+          showToast('Error checking PUML file', 'error');
+        });
     });
   }
 

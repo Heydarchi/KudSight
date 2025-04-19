@@ -28,6 +28,7 @@
       }
     }
   </script>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
   <script src="//cdn.jsdelivr.net/npm/3d-force-graph"></script>
@@ -58,6 +59,31 @@
         <label for="viewMode3D" class="cursor-pointer px-3 py-1 rounded-full text-sm transition-all z-10 peer-checked/3d:text-gray-800 peer-checked/3d:bg-white dark:peer-checked/3d:bg-primary-dark dark:peer-checked/3d:text-white">3D Graph</label>
         <label for="viewModeUML" class="cursor-pointer px-3 py-1 rounded-full text-sm transition-all z-10 peer-checked/uml:text-gray-800 peer-checked/uml:bg-white dark:peer-checked/uml:bg-primary-dark dark:peer-checked/uml:text-white">UML Diagram</label>
       </div>
+    </div>
+    
+    <!-- Download Buttons (Screenshot, PNG, PUML) -->
+    <div class="flex items-center gap-2 ml-4">
+      <button id="screenshotBtn" class="flex items-center justify-center gap-1 bg-primary-light hover:bg-primary-hover-light dark:bg-primary-dark dark:hover:bg-primary-hover-dark text-white p-1.5 rounded-md transition-colors" title="Take Screenshot">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        <span class="hidden sm:inline">Screenshot</span>
+      </button>
+
+      <button id="downloadPngBtn" class="flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white p-1.5 rounded-md transition-colors" title="Download PNG">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+        <span class="hidden sm:inline">PNG</span>
+      </button>
+
+      <button id="downloadPumlBtn" class="flex items-center justify-center gap-1 bg-blue-600 hover:bg-blue-700 text-white p-1.5 rounded-md transition-colors" title="Download PUML">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+        </svg>
+        <span class="hidden sm:inline">PUML</span>
+      </button>
     </div>
     
     <!-- Theme Toggle - Improved Style with Larger Icons -->
@@ -143,7 +169,6 @@
         </div>
       </div>
     </div>
-
   </div>
 
   <!-- Right Camera Control Panel -->

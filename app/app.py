@@ -101,6 +101,9 @@ def upload_folder():
 
 @app.route("/out/<path:filename>")
 def serve_output_file(filename):
+    # Ensure proper MIME type for puml files
+    if filename.endswith(".puml"):
+        return send_from_directory(RESULT_FOLDER, filename, mimetype="text/plain")
     return send_from_directory(RESULT_FOLDER, filename)
 
 

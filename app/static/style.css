@@ -225,3 +225,39 @@ input[type="radio"].sr-only + label {
 .dark #uml-image.invert-in-dark {
   filter: invert(0.85) hue-rotate(180deg);
 }
+
+/* Screenshot button styling */
+#screenshotBtn {
+  transition: all 0.2s ease;
+}
+
+#screenshotBtn:hover svg {
+  transform: scale(1.1);
+}
+
+#screenshotBtn:active svg {
+  transform: scale(0.9);
+}
+
+#screenshotBtn svg {
+  transition: transform 0.2s ease;
+}
+
+/* Screenshot flash animation */
+@keyframes screenshot-flash {
+  0% { opacity: 0; }
+  10% { opacity: 0.3; }
+  100% { opacity: 0; }
+}
+
+.screenshot-flash {
+  animation: screenshot-flash 0.5s ease-out;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: white;
+  pointer-events: none;
+  z-index: 1000;
+}

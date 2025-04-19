@@ -91,6 +91,9 @@ export function showToast(message, type = 'info', duration = 3000) {
   }, duration);
 }
 
+// Make showToast globally available for the screenshot-util.js
+window.showToast = showToast;
+
 // Export form validation helper
 export function validateForm(form) {
   const errors = [];
