@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <title>KudSight - Code Visualization</title>
@@ -11,11 +11,16 @@
       theme: {
         extend: {
           colors: {
-            'primary': '#4f46e5',
-            'primary-hover': '#4338ca',
-            'dark-bg': '#111827',
-            'dark-panel': '#1f2937',
-            'dark-border': '#374151'
+            'primary': {
+              light: '#6366f1',
+              DEFAULT: '#4f46e5',
+              dark: '#4f46e5',
+            },
+            'primary-hover': {
+              light: '#4f46e5',
+              DEFAULT: '#4338ca',
+              dark: '#4338ca',
+            }
           }
         }
       }
@@ -24,18 +29,18 @@
   <link rel="stylesheet" href="/static/style.css">
   <script src="//cdn.jsdelivr.net/npm/3d-force-graph"></script>
 </head>
-<body class="bg-gray-900 text-gray-200 h-screen flex flex-col">
+<body class="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 h-screen flex flex-col transition-colors duration-200">
 
   <!-- Top Controls -->
-  <div id="controls" class="bg-gray-800 border-b border-gray-700 p-3 flex flex-wrap items-center gap-3 z-10">
+  <div id="controls" class="bg-white dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700 p-3 flex flex-wrap items-center gap-3 z-10 shadow-sm">
     <input type="text" id="folderPath" placeholder="Enter full folder path..." 
-           class="bg-gray-700 border border-gray-600 rounded px-3 py-2 w-96 text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary" />
-    <button id="analyzeBtn" class="btn bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded transition-colors">Analyze</button>
-    <span id="status" class="text-sm text-gray-300"></span>
+           class="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 w-96 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark" />
+    <button id="analyzeBtn" class="btn bg-primary-light hover:bg-primary-hover-light dark:bg-primary-dark dark:hover:bg-primary-hover-dark text-white px-4 py-2 rounded transition-colors">Analyze</button>
+    <span id="status" class="text-sm text-gray-600 dark:text-gray-300"></span>
     
     <!-- View Mode Switcher -->
-    <div id="view-mode-switcher" class="flex items-center gap-2 bg-gray-700 px-3 py-1 rounded ml-3">
-      <label class="text-sm text-gray-300">View:</label>
+    <div id="view-mode-switcher" class="flex items-center gap-2 bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded ml-3">
+      <label class="text-sm text-gray-600 dark:text-gray-300">View:</label>
       <div class="flex items-center">
         <input type="radio" id="viewMode3D" name="viewMode" value="3d" checked
                class="form-radio text-primary focus:ring-primary" />
@@ -48,59 +53,72 @@
       </div>
     </div>
     
-    <div id="cameraInfo" class="text-xs text-gray-400 font-mono ml-auto"></div>
+    <!-- Theme Toggle -->
+    <div class="ml-4 flex items-center">
+      <button id="themeToggle" class="flex items-center justify-center w-8 h-8 rounded-full border border-gray-300 dark:border-gray-600 focus:outline-none hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+        <!-- Sun icon for dark mode (shown when in dark mode) -->
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 dark:text-yellow-200 theme-light-icon hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+        <!-- Moon icon for light mode (shown when in light mode) -->
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 theme-dark-icon dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+      </button>
+    </div>
+    
+    <div id="cameraInfo" class="text-xs text-gray-500 dark:text-gray-400 font-mono ml-auto"></div>
   </div>
 
   <!-- Main Layout: Side Panel + Content Area -->
   <div id="main-container" class="flex flex-1 overflow-hidden">
 
     <!-- Left Side Info Panel -->
-    <div id="side-panel" class="w-64 min-w-60 max-w-xs bg-gray-800 border-r border-gray-700 flex flex-col p-4 overflow-auto z-10 shadow-lg">
+    <div id="side-panel" class="w-64 min-w-60 max-w-xs bg-white dark:bg-gray-800 border-r border-gray-300 dark:border-gray-700 flex flex-col p-4 overflow-auto z-10 shadow-lg">
       <div id="json-select-container" class="flex flex-col mb-4">
-        <div class="font-bold mb-1 text-gray-300">KudSight Version: {{ version }}</div>
+        <div class="font-bold mb-1 text-gray-700 dark:text-gray-300">KudSight Version: {{ version }}</div>
         <div class="mb-3"></div>
-        <label for="graphDataFile" class="font-bold mb-1 text-gray-300">Analysis Result:</label>
-        <select id="graphDataFile" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-gray-200 mb-2 focus:outline-none focus:ring-1 focus:ring-primary"></select>
-        <button id="refreshButton" class="btn bg-gray-700 hover:bg-gray-600 text-gray-200 py-1.5 px-3 rounded flex items-center justify-center">
+        <label for="graphDataFile" class="font-bold mb-1 text-gray-700 dark:text-gray-300">Analysis Result:</label>
+        <select id="graphDataFile" class="w-full bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-gray-800 dark:text-gray-200 mb-2 focus:outline-none focus:ring-1 focus:ring-primary"></select>
+        <button id="refreshButton" class="btn bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-3 rounded flex items-center justify-center transition-colors">
           <span class="transform inline-block mr-1">⟳</span> Refresh
         </button>
       </div>
     
       <div id="panel-header" class="mb-3">
-        <label for="categorySelect" class="font-bold block mb-1 text-gray-300">Category</label>
-        <select id="categorySelect" class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-gray-200 focus:outline-none focus:ring-1 focus:ring-primary">
+        <label for="categorySelect" class="font-bold block mb-1 text-gray-700 dark:text-gray-300">Category</label>
+        <select id="categorySelect" class="w-full bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-primary">
           <option value="class">Class</option>
           <option value="module">Module</option>
         </select>
       </div>
     
       <div id="panel-list" class="mb-4">
-        <strong class="block mb-1 text-gray-300">Items</strong>
-        <ul id="itemList" class="list-none p-0 m-0 max-h-60 overflow-y-auto border border-gray-700 bg-gray-900 rounded"></ul>
+        <strong class="block mb-1 text-gray-700 dark:text-gray-300">Items</strong>
+        <ul id="itemList" class="list-none p-0 m-0 max-h-60 overflow-y-auto border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 rounded"></ul>
         <div id="filter-controls" class="mt-3 flex flex-col gap-2">
-          <button id="focusSelectedBtn" class="btn bg-gray-700 hover:bg-gray-600 text-gray-200 py-1.5 px-2 rounded text-sm">Focus on Selected</button>
-          <button id="clearSelectionBtn" class="btn bg-gray-700 hover:bg-gray-600 text-gray-200 py-1.5 px-2 rounded text-sm">Clear Selection</button>
-          <button id="showAllBtn" class="btn bg-gray-700 hover:bg-gray-600 text-gray-200 py-1.5 px-2 rounded text-sm">Show All</button>
+          <button id="focusSelectedBtn" class="btn bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Focus on Selected</button>
+          <button id="clearSelectionBtn" class="btn bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Clear Selection</button>
+          <button id="showAllBtn" class="btn bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Show All</button>
         </div>
       </div>
     
       <div id="panel-details" class="flex-1 overflow-hidden flex flex-col">
-        <strong class="block mb-1 text-gray-300">Details</strong>
-        <div id="itemDetails" class="bg-gray-900 border border-gray-700 rounded p-3 text-sm min-h-[180px] overflow-y-auto flex-grow">
-          <div class="text-gray-400 italic">Select an item to view details.</div>
+        <strong class="block mb-1 text-gray-700 dark:text-gray-300">Details</strong>
+        <div id="itemDetails" class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-3 text-sm min-h-[180px] overflow-y-auto flex-grow">
+          <div class="text-gray-500 dark:text-gray-400 italic">Select an item to view details.</div>
         </div>
       </div>
     </div>
     
-
     <!-- Content Area (Graph or Image) -->
-    <div id="content-area" class="flex-1 relative overflow-hidden bg-gray-900">
+    <div id="content-area" class="flex-1 relative overflow-hidden bg-gray-50 dark:bg-gray-900">
       <!-- Graph Container (Initially visible) -->
       <div id="graph-container" class="absolute inset-0">
         <div id="3d-graph" class="w-full h-full"></div>
       </div>
       <!-- UML Image Container (Initially hidden) -->
-      <div id="uml-image-container" class="hidden absolute inset-0 overflow-auto text-center bg-gray-800 p-5">
+      <div id="uml-image-container" class="hidden absolute inset-0 overflow-auto text-center bg-gray-100 dark:bg-gray-800 p-5">
         <img id="uml-image" src="" alt="UML Diagram" class="max-w-full h-auto inline-block" />
       </div>
     </div>
@@ -108,17 +126,17 @@
   </div>
 
   <!-- Right Camera Control Panel -->
-  <div id="right-panel" class="fixed top-[70px] right-3 w-48 bg-gray-800/95 border border-gray-600 rounded-lg p-3 z-20 backdrop-blur-md shadow-lg">
-    <h4 class="m-0 mb-3 text-sm font-bold border-b border-gray-600 pb-1 text-gray-300">Camera Controls</h4>
-    <button id="resetCamBtn" class="btn w-full mb-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 py-1.5 px-2 rounded text-sm">Reset Camera</button>
-    <button id="zoomInBtn" class="btn w-full mb-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 py-1.5 px-2 rounded text-sm">Zoom In</button>
-    <button id="zoomOutBtn" class="btn w-full mb-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 py-1.5 px-2 rounded text-sm">Zoom Out</button>
-    <button id="tiltUpBtn" class="btn w-full mb-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 py-1.5 px-2 rounded text-sm">Tilt Up</button>
-    <button id="tiltDownBtn" class="btn w-full mb-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 py-1.5 px-2 rounded text-sm">Tilt Down</button>
-    <button id="orbitLeftBtn" class="btn w-full mb-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 py-1.5 px-2 rounded text-sm">Orbit Left</button>
-    <button id="orbitRightBtn" class="btn w-full mb-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 py-1.5 px-2 rounded text-sm">Orbit Right</button>
-    <button id="rollLeftBtn" class="btn w-full mb-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 py-1.5 px-2 rounded text-sm">Roll Left</button>
-    <button id="rollRightBtn" class="btn w-full bg-gray-700 hover:bg-gray-600 text-gray-200 py-1.5 px-2 rounded text-sm">Roll Right</button>
+  <div id="right-panel" class="fixed top-[70px] right-3 w-48 bg-white/95 dark:bg-gray-800/95 border border-gray-300 dark:border-gray-600 rounded-lg p-3 z-20 backdrop-blur-md shadow-lg">
+    <h4 class="m-0 mb-3 text-sm font-bold border-b border-gray-300 dark:border-gray-600 pb-1 text-gray-700 dark:text-gray-300">Camera Controls</h4>
+    <button id="resetCamBtn" class="btn w-full mb-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Reset Camera</button>
+    <button id="zoomInBtn" class="btn w-full mb-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Zoom In</button>
+    <button id="zoomOutBtn" class="btn w-full mb-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Zoom Out</button>
+    <button id="tiltUpBtn" class="btn w-full mb-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Tilt Up</button>
+    <button id="tiltDownBtn" class="btn w-full mb-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Tilt Down</button>
+    <button id="orbitLeftBtn" class="btn w-full mb-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Orbit Left</button>
+    <button id="orbitRightBtn" class="btn w-full mb-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Orbit Right</button>
+    <button id="rollLeftBtn" class="btn w-full mb-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Roll Left</button>
+    <button id="rollRightBtn" class="btn w-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Roll Right</button>
   </div>
 
   <!-- Entry Point JS -->

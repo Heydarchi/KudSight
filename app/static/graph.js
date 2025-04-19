@@ -2,6 +2,7 @@
 import * as THREE from 'https://esm.sh/three';
 import { setupPanel } from './panel.js';
 import { autoSavePositions, setCurrentGraphFile } from './ui.js';
+import { getNodeColorScheme } from './theme-manager.js';
 
 export const ARROW_SIZE = 6;
 export const ARROW_COLOR = '#ffffff';
@@ -78,21 +79,26 @@ export function loadGraphData(filename = 'data.json') {
     .catch(err => console.error('Error loading', filename, ':', err));
 }
 
+// Update the createUMLNode function to respect current theme
 function createUMLNode(node) {
   const canvas = document.createElement('canvas');
   canvas.width = 480;
   canvas.height = 280;
   const ctx = canvas.getContext('2d');
   const marginLeft = 20;
+  
+  // Get color scheme based on current theme
+  const isDarkTheme = document.documentElement.classList.contains('dark');
+  const colors = getNodeColorScheme(isDarkTheme);
 
-  ctx.fillStyle = 'white';
+  ctx.fillStyle = colors.background;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeStyle = '#000';
+  ctx.strokeStyle = colors.stroke;
   ctx.lineWidth = 4;
   ctx.strokeRect(0, 0, canvas.width, canvas.height);
 
   ctx.font = 'bold 24px Arial';
-  ctx.fillStyle = '#000';
+  ctx.fillStyle = colors.title;
   ctx.textAlign = 'center';
   ctx.fillText(node.id, canvas.width / 2, 30);
 
@@ -106,7 +112,7 @@ function createUMLNode(node) {
 
   if (node.type === 'module') {
     ctx.font = '20px Arial';
-    ctx.fillStyle = '#007bff';
+    ctx.fillStyle = colors.attribute;
     ctx.fillText(`Version: ${node.version || 'N/A'}`, marginLeft, y);
     y += 26;
     ctx.fillText(`Classes: ${(node.classes || []).length}`, marginLeft, y);
@@ -114,7 +120,7 @@ function createUMLNode(node) {
 
   if (node.type === 'class') {
     ctx.font = '20px Arial';
-    ctx.fillStyle = '#007bff';
+    ctx.fillStyle = colors.attribute;
     if (node.attributes) {
       node.attributes.forEach(attr => {
         ctx.fillText(attr, marginLeft, y);
@@ -122,7 +128,7 @@ function createUMLNode(node) {
       });
     }
 
-    ctx.fillStyle = '#e44c1a';
+    ctx.fillStyle = colors.method;
     if (node.methods) {
       y += 10;
       node.methods.forEach(method => {
@@ -161,3 +167,11 @@ function getLinkLabel(link) {
       Relation: ${link.relation}
     </div>`;
 }
+
+// Listen for theme changes to update graph node styling
+window.addEventListener('themechange', (e) => {
+  // If we have graph data loaded, refresh the graph to update node styles
+  if (originalGraphData) {
+    Graph.refresh(); // This will re-render nodes with new styling
+  }
+});

@@ -3,6 +3,7 @@ import * as THREE from 'https://esm.sh/three';
 import { loadGraphData, Graph, originalGraphData } from './graph.js';
 import { getSelectedNodeIds, clearSelection } from './panel.js';
 import { styleFormElements } from './tailwind-helpers.js';
+import { initTheme, toggleTheme, THEMES, updateUiForTheme } from './theme-manager.js';
 
 let currentGraphFile = null; // Start with null
 let currentViewMode = '3d'; // Default view mode
@@ -164,7 +165,11 @@ function loadJsonFileList() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Apply Tailwind styles to form elements when page loads
+  // Initialize theme first
+  const currentTheme = initTheme();
+  updateUiForTheme(currentTheme);
+  
+  // Apply Tailwind styles to form elements after theme is set
   styleFormElements();
 
   const folderInput = document.getElementById('folderPath');
@@ -353,6 +358,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (viewModeUMLRadio.checked) {
       setViewMode('uml');
     }
+  });
+
+  // Theme toggle button
+  const themeToggleBtn = document.getElementById('themeToggle');
+  themeToggleBtn.addEventListener('click', () => {
+    const newTheme = toggleTheme();
+    updateUiForTheme(newTheme);
   });
 
   // --- Initial Load ---
