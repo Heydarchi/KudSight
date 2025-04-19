@@ -1,8 +1,20 @@
-from flask import Flask, request, render_template, jsonify, send_from_directory
+from flask import (
+    Flask,
+    request,
+    render_template,
+    jsonify,
+    send_from_directory,
+    send_file,
+    Response,
+)
 import os
 from werkzeug.utils import secure_filename
 from FileAnalyzer import FileAnalyzer
 import json
+import base64
+from io import BytesIO
+from PIL import Image
+import cairosvg  # You might need to install this: pip install cairosvg
 
 UPLOAD_FOLDER = "uploads"
 RESULT_FOLDER = "static/out"
@@ -12,12 +24,54 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULT_FOLDER, exist_ok=True)
 
-APP_VERSION = "V0.5.0-beta"
+APP_VERSION = "V0.6.0-beta"
 
 
 @app.route("/")
 def index():
     return render_template("index.html", version=APP_VERSION)
+
+
+@app.route("/favicon.ico")
+def favicon():
+    try:
+        # First check if a favicon.ico file already exists
+        favicon_path = os.path.join(app.root_path, "static", "favicon.ico")
+        if os.path.exists(favicon_path):
+            return send_from_directory(
+                os.path.join(app.root_path, "static"),
+                "favicon.ico",
+                mimetype="image/vnd.microsoft.icon",
+            )
+
+        # If not, generate one from the SVG
+        svg_path = os.path.join(app.root_path, "static", "favicon.svg")
+        if os.path.exists(svg_path):
+            # Convert SVG to PNG using cairosvg
+            png_data = cairosvg.svg2png(url=svg_path, output_width=32, output_height=32)
+
+            # Convert PNG to ICO
+            img = Image.open(BytesIO(png_data))
+            ico_output = BytesIO()
+            img.save(ico_output, format="ICO", sizes=[(32, 32)])
+            ico_output.seek(0)
+
+            # Save the ICO file for future use
+            with open(favicon_path, "wb") as f:
+                f.write(ico_output.getvalue())
+
+            # Return the generated ICO
+            ico_output.seek(0)
+            return send_file(ico_output, mimetype="image/x-icon")
+    except Exception as e:
+        print(f"Error generating favicon: {e}")
+        # Return a simple transparent 1x1 pixel ICO as fallback
+        return Response(
+            base64.b64decode(
+                "AAABAAEAEBACAAEAAQCwAAAAFgAAAIlQTkcNChoKAAAADUlIRFIAAAAQAAAAEAgGAAAAH/P/YQAAAAFzUkdCAK7OHOkAAAAEZ0FNQQAAsY8L/GEFAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGXRFWHRTb2Z0d2FyZQB3d3cuaW5rc2NhcGUub3Jnm+48GgAAABVJREFUGFdjYBgFo2AUjIJRQE8AAAQQAAEpKXNFAAAAAElFTkSuQmCC"
+            ),
+            mimetype="image/x-icon",
+        )
 
 
 @app.route("/upload", methods=["POST"])
@@ -47,6 +101,9 @@ def upload_folder():
 
 @app.route("/out/<path:filename>")
 def serve_output_file(filename):
+    # Ensure proper MIME type for puml files
+    if filename.endswith(".puml"):
+        return send_from_directory(RESULT_FOLDER, filename, mimetype="text/plain")
     return send_from_directory(RESULT_FOLDER, filename)
 
 

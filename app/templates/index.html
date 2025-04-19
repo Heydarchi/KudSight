@@ -1,96 +1,188 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KudSight - Code Visualization</title>
+  <!-- Replace CDN with proper production setup -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // This configuration will be replaced by a proper build process in production
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            'primary': {
+              light: '#6366f1',
+              DEFAULT: '#4f46e5',
+              dark: '#4f46e5',
+            },
+            'primary-hover': {
+              light: '#4f46e5',
+              DEFAULT: '#4338ca',
+              dark: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
   <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
   <script src="//cdn.jsdelivr.net/npm/3d-force-graph"></script>
+  <!-- Production Notice -->
+  <script>
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      console.warn('Warning: Using Tailwind CSS via CDN in production. For better performance, consider installing Tailwind CSS as a PostCSS plugin or using the Tailwind CLI.');
+    }
+  </script>
 </head>
-<body>
+<body class="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 h-screen flex flex-col transition-colors duration-200">
 
   <!-- Top Controls -->
-  <div id="controls">
-    <input type="text" id="folderPath" placeholder="Enter full folder path..." />
-    <button id="analyzeBtn" class="btn">Analyze</button>
-    <span id="status"></span>
-    <!-- Start Change: Add View Mode Switcher -->
-    <div id="view-mode-switcher">
-      <label>View:</label>
-      <input type="radio" id="viewMode3D" name="viewMode" value="3d" checked>
-      <label for="viewMode3D">3D Graph</label>
-      <input type="radio" id="viewModeUML" name="viewMode" value="uml">
-      <label for="viewModeUML">UML Diagram</label>
+  <div id="controls" class="bg-white dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700 p-3 flex flex-wrap items-center gap-3 z-10 shadow-sm">
+    <input type="text" id="folderPath" placeholder="Enter full folder path..." 
+           class="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 w-96 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark" />
+    <button id="analyzeBtn" class="btn bg-primary-light hover:bg-primary-hover-light dark:bg-primary-dark dark:hover:bg-primary-hover-dark text-white px-4 py-2 rounded transition-colors">Analyze</button>
+    <span id="status" class="text-sm text-gray-600 dark:text-gray-300"></span>
+    
+    <!-- View Mode Switcher - New Modern Style -->
+    <div class="flex items-center gap-3 bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded-full ml-4">
+      <span class="text-sm font-medium text-gray-600 dark:text-gray-300">View:</span>
+      <div class="relative flex items-center p-1 bg-gray-300 dark:bg-gray-600 rounded-full">
+        <input type="radio" id="viewMode3D" name="viewMode" value="3d" checked
+               class="sr-only peer/3d" />
+        <input type="radio" id="viewModeUML" name="viewMode" value="uml"
+               class="sr-only peer/uml" />
+        <label for="viewMode3D" class="cursor-pointer px-3 py-1 rounded-full text-sm transition-all z-10 peer-checked/3d:text-gray-800 peer-checked/3d:bg-white dark:peer-checked/3d:bg-primary-dark dark:peer-checked/3d:text-white">3D Graph</label>
+        <label for="viewModeUML" class="cursor-pointer px-3 py-1 rounded-full text-sm transition-all z-10 peer-checked/uml:text-gray-800 peer-checked/uml:bg-white dark:peer-checked/uml:bg-primary-dark dark:peer-checked/uml:text-white">UML Diagram</label>
+      </div>
     </div>
-    <!-- End Change -->
-    <div id="cameraInfo"></div>
+    
+    <!-- Download Buttons (Screenshot, PNG, PUML) -->
+    <div class="flex items-center gap-2 ml-4">
+      <button id="screenshotBtn" class="flex items-center justify-center gap-1 bg-primary-light hover:bg-primary-hover-light dark:bg-primary-dark dark:hover:bg-primary-hover-dark text-white p-1.5 rounded-md transition-colors" title="Take Screenshot">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        <span class="hidden sm:inline">Screenshot</span>
+      </button>
+
+      <button id="downloadPngBtn" class="flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white p-1.5 rounded-md transition-colors" title="Download PNG">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+        <span class="hidden sm:inline">PNG</span>
+      </button>
+
+      <button id="downloadPumlBtn" class="flex items-center justify-center gap-1 bg-blue-600 hover:bg-blue-700 text-white p-1.5 rounded-md transition-colors" title="Download PUML">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+        </svg>
+        <span class="hidden sm:inline">PUML</span>
+      </button>
+    </div>
+    
+    <!-- Theme Toggle - Improved Style with Larger Icons -->
+    <div class="ml-4">
+      <button id="themeToggle" class="relative inline-flex h-6 w-12 items-center rounded-full bg-gray-300 dark:bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark">
+        <span class="sr-only">Toggle theme</span>
+        <span class="inline-block h-5 w-5 transform rounded-full bg-white transition-transform translate-x-0.5 dark:translate-x-6 dark:bg-gray-900 flex items-center justify-center">
+          <!-- Sun icon (visible in light mode) -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-yellow-500 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5" />
+            <line x1="12" y1="1" x2="12" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="23" />
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+            <line x1="1" y1="12" x2="3" y2="12" />
+            <line x1="21" y1="12" x2="23" y2="12" />
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+          </svg>
+          <!-- Moon icon (visible in dark mode) -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-600 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        </span>
+      </button>
+    </div>
+    
+    <div id="cameraInfo" class="text-xs text-gray-500 dark:text-gray-400 font-mono ml-auto"></div>
   </div>
 
   <!-- Main Layout: Side Panel + Content Area -->
-  <div id="main-container">
+  <div id="main-container" class="flex flex-1 overflow-hidden">
 
     <!-- Left Side Info Panel -->
-    <div id="side-panel">
-      <div id="json-select-container">
-        <label >KudSight Version: {{ version }}</label>
-        <label ></label>
-        <label ></label>
-        <label for="graphDataFile">Analysis Result:</label>
-        <select id="graphDataFile"></select>
-        <button id="refreshButton" class="btn">⟳ Refresh</button>
+    <div id="side-panel" class="w-64 min-w-60 max-w-xs bg-white dark:bg-gray-800 border-r border-gray-300 dark:border-gray-700 flex flex-col p-4 overflow-auto z-10 shadow-lg">
+      <div id="json-select-container" class="flex flex-col mb-4">
+        <div class="font-bold mb-1 text-gray-700 dark:text-gray-300">KudSight Version: {{ version }}</div>
+        <div class="mb-3"></div>
+        <label for="graphDataFile" class="font-bold mb-1 text-gray-700 dark:text-gray-300">Analysis Result:</label>
+        <select id="graphDataFile" class="w-full bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-gray-800 dark:text-gray-200 mb-2 focus:outline-none focus:ring-1 focus:ring-primary"></select>
+        <button id="refreshButton" class="btn bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-3 rounded flex items-center justify-center transition-colors">
+          <span class="transform inline-block mr-1">⟳</span> Refresh
+        </button>
       </div>
     
-      <div id="panel-header">
-        <label for="categorySelect">Category</label>
-        <select id="categorySelect">
+      <div id="panel-header" class="mb-3">
+        <label for="categorySelect" class="font-bold block mb-1 text-gray-700 dark:text-gray-300">Category</label>
+        <select id="categorySelect" class="w-full bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-primary">
           <option value="class">Class</option>
           <option value="module">Module</option>
         </select>
       </div>
     
-      <div id="panel-list">
-        <strong>Items</strong>
-        <ul id="itemList"></ul>
-        <div id="filter-controls">
-            <button id="focusSelectedBtn" class="btn btn-small">Focus on Selected</button>
-            <button id="clearSelectionBtn" class="btn btn-small">Clear Selection</button>
-            <button id="showAllBtn" class="btn btn-small">Show All</button>
+      <div id="panel-list" class="mb-4">
+        <strong class="block mb-1 text-gray-700 dark:text-gray-300">Items</strong>
+        <ul id="itemList" class="list-none p-0 m-0 max-h-60 overflow-y-auto border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 rounded"></ul>
+        <div id="filter-controls" class="mt-3 flex flex-col gap-2">
+          <button id="focusSelectedBtn" class="btn bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Focus on Selected</button>
+          <button id="clearSelectionBtn" class="btn bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Clear Selection</button>
+          <button id="showAllBtn" class="btn bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Show All</button>
         </div>
       </div>
     
-      <div id="panel-details">
-        <strong>Details</strong>
-        <div id="itemDetails">Select an item to view details.</div>
+      <div id="panel-details" class="flex-1 overflow-hidden flex flex-col">
+        <strong class="block mb-1 text-gray-700 dark:text-gray-300">Details</strong>
+        <div id="itemDetails" class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-3 text-sm min-h-[180px] overflow-y-auto flex-grow">
+          <div class="text-gray-500 dark:text-gray-400 italic">Select an item to view details.</div>
+        </div>
       </div>
     </div>
     
-
     <!-- Content Area (Graph or Image) -->
-    <div id="content-area">
+    <div id="content-area" class="flex-1 relative overflow-hidden bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       <!-- Graph Container (Initially visible) -->
-      <div id="graph-container">
-        <div id="3d-graph"></div>
+      <div id="graph-container" class="absolute inset-0">
+        <div id="3d-graph" class="w-full h-full"></div>
       </div>
-      <!-- Start Change: Add UML Image Container (Initially hidden) -->
-      <div id="uml-image-container" class="hidden">
-        <img id="uml-image" src="" alt="UML Diagram" />
+      <!-- UML Image Container (Initially hidden) -->
+      <div id="uml-image-container" class="hidden absolute inset-0 overflow-auto text-center bg-gray-100 dark:bg-gray-800 p-5 transition-colors duration-200">
+        <!-- Add a themed container for the UML image -->
+        <div class="inline-block bg-white dark:bg-gray-900 p-4 rounded-lg shadow-lg max-w-full">
+          <img id="uml-image" src="" alt="UML Diagram" class="max-w-full h-auto" />
+        </div>
       </div>
-      <!-- End Change -->
     </div>
-
   </div>
 
   <!-- Right Camera Control Panel -->
-  <div id="right-panel">
-    <h4>Camera Controls</h4>
-    <button id="resetCamBtn" class="btn">Reset Camera</button>
-    <button id="zoomInBtn" class="btn">Zoom In</button>
-    <button id="zoomOutBtn" class="btn">Zoom Out</button>
-    <button id="tiltUpBtn" class="btn">Tilt Up</button>
-    <button id="tiltDownBtn" class="btn">Tilt Down</button>
-    <button id="orbitLeftBtn" class="btn">Orbit Left</button>
-    <button id="orbitRightBtn" class="btn">Orbit Right</button>
-    <button id="rollLeftBtn" class="btn">Roll Left</button>
-    <button id="rollRightBtn" class="btn">Roll Right</button>
+  <div id="right-panel" class="fixed top-[70px] right-3 w-48 bg-white/95 dark:bg-gray-800/95 border border-gray-300 dark:border-gray-600 rounded-lg p-3 z-20 backdrop-blur-md shadow-lg">
+    <h4 class="m-0 mb-3 text-sm font-bold border-b border-gray-300 dark:border-gray-600 pb-1 text-gray-700 dark:text-gray-300">Camera Controls</h4>
+    <button id="resetCamBtn" class="btn w-full mb-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Reset Camera</button>
+    <button id="zoomInBtn" class="btn w-full mb-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Zoom In</button>
+    <button id="zoomOutBtn" class="btn w-full mb-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Zoom Out</button>
+    <button id="tiltUpBtn" class="btn w-full mb-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Tilt Up</button>
+    <button id="tiltDownBtn" class="btn w-full mb-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Tilt Down</button>
+    <button id="orbitLeftBtn" class="btn w-full mb-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Orbit Left</button>
+    <button id="orbitRightBtn" class="btn w-full mb-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Orbit Right</button>
+    <button id="rollLeftBtn" class="btn w-full mb-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Roll Left</button>
+    <button id="rollRightBtn" class="btn w-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 px-2 rounded text-sm transition-colors">Roll Right</button>
   </div>
 
   <!-- Entry Point JS -->

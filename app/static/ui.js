@@ -2,6 +2,11 @@
 import * as THREE from 'https://esm.sh/three';
 import { loadGraphData, Graph, originalGraphData } from './graph.js';
 import { getSelectedNodeIds, clearSelection } from './panel.js';
+import { styleFormElements } from './tailwind-helpers.js';
+import { initTheme, toggleTheme, THEMES, updateUiForTheme, getNodeColorScheme } from './theme-manager.js';
+import { initAnimations } from './animations.js';
+import { showLoadingSpinner, showToast } from './ui-components.js';
+import { captureScreenshot, downloadFile, downloadImage } from './screenshot-util.js';
 
 let currentGraphFile = null; // Start with null
 let currentViewMode = '3d'; // Default view mode
@@ -74,7 +79,17 @@ function setViewMode(mode) {
     umlImageContainer.classList.add('hidden');
     // If graph data exists, ensure it's rendered
     if (originalGraphData) {
-        Graph.graphData(Graph.graphData()); // Re-trigger rendering if needed
+        // Update graph with current theme colors after switching views
+        const isDarkTheme = document.documentElement.classList.contains('dark');
+        const colors = getNodeColorScheme(isDarkTheme);
+        
+        if (Graph) {
+          Graph
+            .linkColor(colors.linkColor)
+            .linkDirectionalArrowColor(colors.arrowColor)
+            .backgroundColor(colors.bgColor)
+            .graphData(Graph.graphData()); // Re-trigger rendering with current data
+        }
     } else if (currentGraphFile) {
         loadContentForFile(currentGraphFile); // Load graph if file selected but no data yet
     }
@@ -133,7 +148,7 @@ function loadContentForFile(filename) {
 
 // --- Function to fetch and update file list ---
 function loadJsonFileList() {
-  fetch('/list-json')
+  return fetch('/list-json')
     .then(response => response.json())
     .then(files => {
       updateGraphDataDropdown(files);
@@ -151,18 +166,29 @@ function loadJsonFileList() {
       }
     })
     .catch(err => {
-        console.error('Error fetching JSON file list:', err);
-        // Handle error state in UI
-        updateGraphDataDropdown([]);
-        Graph.graphData({ nodes: [], links: [] });
-        setupPanel({ nodes: [], links: [] });
-        umlImage.src = '';
-        umlImage.alt = 'Error loading analysis results.';
-        setCurrentGraphFile(null);
+      console.error('Error fetching JSON file list:', err);
+      showToast('Failed to load analysis results', 'error');
+      // Handle error state in UI
+      updateGraphDataDropdown([]);
+      Graph.graphData({ nodes: [], links: [] });
+      setupPanel({ nodes: [], links: [] });
+      umlImage.src = '';
+      umlImage.alt = 'Error loading analysis results.';
+      setCurrentGraphFile(null);
     });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Initialize theme first
+  const currentTheme = initTheme();
+  updateUiForTheme(currentTheme);
+  
+  // Apply Tailwind styles to form elements after theme is set
+  styleFormElements();
+  
+  // Initialize animations
+  initAnimations();
+
   const folderInput = document.getElementById('folderPath');
   const status = document.getElementById('status');
   const analyzeBtn = document.getElementById('analyzeBtn');
@@ -192,10 +218,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const folderPath = folderInput.value.trim();
     if (!folderPath) {
       status.textContent = 'Please enter a folder path.';
+      showToast('Please enter a folder path.', 'warning');
       return;
     }
 
-    status.textContent = 'Analyzing...';
+    // Replace the status HTML with our spinner component
+    const removeSpinner = showLoadingSpinner(status, 'Analyzing...');
     analyzeBtn.disabled = true; // Disable button during analysis
     refreshBtn.disabled = true; // Disable refresh too
 
@@ -210,19 +238,27 @@ document.addEventListener('DOMContentLoaded', () => {
       .then(res => res.json())
       .then(res => {
         if (res.status === 'ok') {
-          status.textContent = 'Analysis complete. Updating file list...';
+          removeSpinner(); // Remove the spinner
+          status.textContent = 'Analysis complete.';
+          showToast('Analysis completed successfully!', 'success');
           updateGraphDataDropdown(res.files);
           // Automatically load the newest file (first in the sorted list)
           if (res.files && res.files.length > 0) {
             loadContentForFile(res.files[0]);
           }
-          status.textContent = ''; // Clear status
+          setTimeout(() => {
+            status.textContent = ''; // Clear status after a delay
+          }, 2000);
         } else {
+          removeSpinner();
           status.textContent = `Error: ${res.message}`;
+          showToast(`Error: ${res.message}`, 'error');
         }
       })
       .catch(err => {
+        removeSpinner();
         status.textContent = 'Request failed.';
+        showToast('Network request failed.', 'error');
         console.error(err);
       })
       .finally(() => {
@@ -267,7 +303,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }, 500);
 
   // --- Refresh Button Listener ---
-  refreshBtn.addEventListener('click', loadJsonFileList);
+  refreshBtn.addEventListener('click', () => {
+    refreshBtn.disabled = true;
+    refreshBtn.innerHTML = '<span class="animate-spin inline-block mr-1">⟳</span> Loading...';
+    
+    loadJsonFileList().finally(() => {
+      refreshBtn.disabled = false;
+      refreshBtn.innerHTML = '<span class="inline-block mr-1">⟳</span> Refresh';
+    });
+  });
 
   // --- Dropdown Change Listener ---
   jsonSelect.addEventListener('change', () => {
@@ -334,14 +378,184 @@ document.addEventListener('DOMContentLoaded', () => {
   viewMode3DRadio.addEventListener('change', () => {
     if (viewMode3DRadio.checked) {
       setViewMode('3d');
+      // Add animation to the switch for better feedback
+      document.querySelectorAll('#view-mode-switcher label').forEach(label => {
+        label.classList.add('transition-all');
+      });
     }
   });
 
   viewModeUMLRadio.addEventListener('change', () => {
     if (viewModeUMLRadio.checked) {
       setViewMode('uml');
+      // Add animation to the switch for better feedback
+      document.querySelectorAll('#view-mode-switcher label').forEach(label => {
+        label.classList.add('transition-all');
+      });
     }
   });
+
+  // Theme toggle button with improved animation and tooltip
+  const themeToggleBtn = document.getElementById('themeToggle');
+  if (themeToggleBtn) {
+    // Set initial tooltip
+    const isDark = document.documentElement.classList.contains('dark');
+    themeToggleBtn.setAttribute('data-tooltip', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+    
+    themeToggleBtn.addEventListener('click', () => {
+      // Disable the theme toggle button briefly to prevent rapid clicks
+      themeToggleBtn.disabled = true;
+      
+      // Show a subtle animation
+      const newTheme = toggleTheme();
+      updateUiForTheme(newTheme);
+      
+      // Update tooltip text based on new theme
+      themeToggleBtn.setAttribute('data-tooltip', 
+        newTheme === THEMES.DARK ? 'Switch to light mode' : 'Switch to dark mode');
+      
+      // Add ripple effect to the toggle button
+      const ripple = document.createElement('span');
+      ripple.classList.add('absolute', 'inset-0', 'rounded-full', 'opacity-30', 
+        newTheme === THEMES.DARK ? 'bg-gray-400' : 'bg-blue-300');
+      themeToggleBtn.appendChild(ripple);
+      
+      // Remove ripple after animation
+      setTimeout(() => {
+        ripple.remove();
+        // Re-enable the theme toggle button after theme change is complete
+        themeToggleBtn.disabled = false;
+      }, 300);
+      
+      // We don't need to manually update the graph here anymore
+      // Theme-manager.js now handles preserving the view
+    });
+  }
+
+  // --- Screenshot button handler ---
+  const screenshotBtn = document.getElementById('screenshotBtn');
+  const contentArea = document.getElementById('content-area');
+
+  if (screenshotBtn && contentArea) {
+    screenshotBtn.addEventListener('click', () => {
+      // Create a filename based on the current view mode and file
+      let filename = 'kudsight';
+      
+      if (currentGraphFile) {
+        // Extract the base name without extension
+        const baseName = currentGraphFile.replace(/\.json$/, '');
+        filename = `${baseName}-${currentViewMode}`;
+      } else {
+        filename = `kudsight-${currentViewMode}`;
+      }
+      
+      // Add timestamp for uniqueness
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+      filename = `${filename}-${timestamp}.png`;
+      
+      // For 3D mode, capture the entire element containing the 3D graph
+      // For UML mode, capture the container with the image
+      let targetElement;
+      
+      if (currentViewMode === '3d') {
+        targetElement = document.getElementById('graph-container');
+      } else {
+        targetElement = document.getElementById('uml-image-container');
+      }
+      
+      // If specific container not found, fall back to content-area
+      if (!targetElement) {
+        targetElement = contentArea;
+      }
+      
+      // Take the screenshot
+      captureScreenshot(targetElement, filename);
+    });
+  }
+
+  // --- Download PNG button handler ---
+  const downloadPngBtn = document.getElementById('downloadPngBtn');
+  if (downloadPngBtn) {
+    downloadPngBtn.addEventListener('click', () => {
+      if (!currentGraphFile) {
+        showToast('No file selected to download', 'warning');
+        return;
+      }
+      
+      const baseName = currentGraphFile.replace(/\.json$/, '');
+      const pngFilename = `${baseName}.png`;
+      const pngPath = `/out/${pngFilename}`;
+      
+      // First check if the file exists
+      fetch(pngPath, { method: 'HEAD' })
+        .then(response => {
+          if (response.ok) {
+            // File exists, download it
+            fetch(pngPath)
+              .then(response => response.blob())
+              .then(blob => {
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = pngFilename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                showToast(`Downloaded ${pngFilename}`, 'success');
+              })
+              .catch(error => {
+                console.error('Error downloading PNG:', error);
+                showToast('Error downloading PNG file', 'error');
+              });
+          } else {
+            showToast(`PNG file not found for ${baseName}`, 'error');
+          }
+        })
+        .catch(error => {
+          console.error('Error checking PNG file:', error);
+          showToast('Error checking PNG file', 'error');
+        });
+    });
+  }
+
+  // --- Download PUML button handler ---
+  const downloadPumlBtn = document.getElementById('downloadPumlBtn');
+  if (downloadPumlBtn) {
+    downloadPumlBtn.addEventListener('click', () => {
+      if (!currentGraphFile) {
+        showToast('No file selected to download', 'warning');
+        return;
+      }
+      
+      const baseName = currentGraphFile.replace(/\.json$/, '');
+      const pumlFilename = `${baseName}.puml`;
+      const pumlPath = `/out/${pumlFilename}`;
+      
+      // First check if the file exists
+      fetch(pumlPath, { method: 'HEAD' })
+        .then(response => {
+          if (response.ok) {
+            // File exists, download it
+            fetch(pumlPath)
+              .then(response => response.text())
+              .then(text => {
+                downloadFile(text, pumlFilename);
+              })
+              .catch(error => {
+                console.error('Error downloading PUML:', error);
+                showToast('Error downloading PUML file', 'error');
+              });
+          } else {
+            showToast(`PUML file not found for ${baseName}`, 'error');
+          }
+        })
+        .catch(error => {
+          console.error('Error checking PUML file:', error);
+          showToast('Error checking PUML file', 'error');
+        });
+    });
+  }
 
   // --- Initial Load ---
   setViewMode(currentViewMode); // Set initial view based on default
