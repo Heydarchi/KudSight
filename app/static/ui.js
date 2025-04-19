@@ -5,6 +5,7 @@ import { getSelectedNodeIds, clearSelection } from './panel.js';
 import { styleFormElements } from './tailwind-helpers.js';
 import { initTheme, toggleTheme, THEMES, updateUiForTheme, getNodeColorScheme } from './theme-manager.js';
 import { initAnimations } from './animations.js';
+import { showLoadingSpinner, showToast } from './ui-components.js';
 
 let currentGraphFile = null; // Start with null
 let currentViewMode = '3d'; // Default view mode
@@ -165,6 +166,7 @@ function loadJsonFileList() {
     })
     .catch(err => {
       console.error('Error fetching JSON file list:', err);
+      showToast('Failed to load analysis results', 'error');
       // Handle error state in UI
       updateGraphDataDropdown([]);
       Graph.graphData({ nodes: [], links: [] });
@@ -215,10 +217,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const folderPath = folderInput.value.trim();
     if (!folderPath) {
       status.textContent = 'Please enter a folder path.';
+      showToast('Please enter a folder path.', 'warning');
       return;
     }
 
-    status.innerHTML = '<span class="inline-flex items-center"><svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Analyzing...</span>';
+    // Replace the status HTML with our spinner component
+    const removeSpinner = showLoadingSpinner(status, 'Analyzing...');
     analyzeBtn.disabled = true; // Disable button during analysis
     refreshBtn.disabled = true; // Disable refresh too
 
@@ -233,19 +237,27 @@ document.addEventListener('DOMContentLoaded', () => {
       .then(res => res.json())
       .then(res => {
         if (res.status === 'ok') {
-          status.textContent = 'Analysis complete. Updating file list...';
+          removeSpinner(); // Remove the spinner
+          status.textContent = 'Analysis complete.';
+          showToast('Analysis completed successfully!', 'success');
           updateGraphDataDropdown(res.files);
           // Automatically load the newest file (first in the sorted list)
           if (res.files && res.files.length > 0) {
             loadContentForFile(res.files[0]);
           }
-          status.textContent = ''; // Clear status
+          setTimeout(() => {
+            status.textContent = ''; // Clear status after a delay
+          }, 2000);
         } else {
+          removeSpinner();
           status.textContent = `Error: ${res.message}`;
+          showToast(`Error: ${res.message}`, 'error');
         }
       })
       .catch(err => {
+        removeSpinner();
         status.textContent = 'Request failed.';
+        showToast('Network request failed.', 'error');
         console.error(err);
       })
       .finally(() => {
@@ -382,44 +394,42 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Theme toggle button with improved animation
+  // Theme toggle button with improved animation and tooltip
   const themeToggleBtn = document.getElementById('themeToggle');
-  themeToggleBtn.addEventListener('click', () => {
-    const newTheme = toggleTheme();
-    updateUiForTheme(newTheme);
+  if (themeToggleBtn) {
+    // Set initial tooltip
+    const isDark = document.documentElement.classList.contains('dark');
+    themeToggleBtn.setAttribute('data-tooltip', isDark ? 'Switch to light mode' : 'Switch to dark mode');
     
-    // Add ripple effect to the toggle button
-    const ripple = document.createElement('span');
-    ripple.classList.add('absolute', 'inset-0', 'rounded-full', 'opacity-30', 
-      newTheme === THEMES.DARK ? 'bg-gray-400' : 'bg-blue-300');
-    themeToggleBtn.appendChild(ripple);
-    
-    // Remove ripple after animation
-    setTimeout(() => {
-      ripple.remove();
-    }, 300);
-    
-    // Update graph or UML view based on current mode
-    if (currentViewMode === '3d' && Graph) {
-      const isDark = newTheme === THEMES.DARK;
-      const colors = getNodeColorScheme(isDark);
+    themeToggleBtn.addEventListener('click', () => {
+      // Disable the theme toggle button briefly to prevent rapid clicks
+      themeToggleBtn.disabled = true;
       
-      // Update graph colors
-      Graph
-        .linkColor(colors.linkColor)
-        .linkDirectionalArrowColor(colors.arrowColor)
-        .backgroundColor(colors.bgColor);
+      // Show a subtle animation
+      const newTheme = toggleTheme();
+      updateUiForTheme(newTheme);
       
-      if (originalGraphData) {
-        // Force a full refresh of the graph to update all node appearances
-        const currentData = Graph.graphData();
-        Graph.graphData({ nodes: [], links: [] }); // Clear
-        setTimeout(() => {
-          Graph.graphData(currentData); // Reload with same data to force full refresh
-        }, 10);
-      }
-    }
-  });
+      // Update tooltip text based on new theme
+      themeToggleBtn.setAttribute('data-tooltip', 
+        newTheme === THEMES.DARK ? 'Switch to light mode' : 'Switch to dark mode');
+      
+      // Add ripple effect to the toggle button
+      const ripple = document.createElement('span');
+      ripple.classList.add('absolute', 'inset-0', 'rounded-full', 'opacity-30', 
+        newTheme === THEMES.DARK ? 'bg-gray-400' : 'bg-blue-300');
+      themeToggleBtn.appendChild(ripple);
+      
+      // Remove ripple after animation
+      setTimeout(() => {
+        ripple.remove();
+        // Re-enable the theme toggle button after theme change is complete
+        themeToggleBtn.disabled = false;
+      }, 300);
+      
+      // We don't need to manually update the graph here anymore
+      // Theme-manager.js now handles preserving the view
+    });
+  }
 
   // --- Initial Load ---
   setViewMode(currentViewMode); // Set initial view based on default

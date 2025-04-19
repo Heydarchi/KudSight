@@ -95,6 +95,9 @@ export function updateUiForTheme(theme) {
   
   // Update graph background and visualization
   updateGraphColors(isDark);
+  
+  // Important: Preserve current view mode and contents when theme changes
+  preserveCurrentView(isDark);
 }
 
 // Update graph colors based on theme
@@ -121,5 +124,69 @@ function updateGraphColors(isDark) {
     } catch (e) {
       console.error('Error updating graph colors:', e);
     }
+  }
+}
+
+// Preserve the current view when theme changes
+function preserveCurrentView(isDark) {
+  // Get current view mode
+  const currentViewMode = document.getElementById('viewMode3D')?.checked ? '3d' : 'uml';
+  
+  if (currentViewMode === '3d') {
+    // For 3D view, ensure the graph data is redrawn with new theme colors
+    if (window.Graph && window.originalGraphData) {
+      const colors = getNodeColorScheme(isDark);
+      
+      // Cache current camera position before redrawing
+      let cameraPosition = null;
+      let cameraLookAt = null;
+      let cameraUp = null;
+      
+      try {
+        const camera = window.Graph.camera();
+        if (camera) {
+          cameraPosition = { x: camera.position.x, y: camera.position.y, z: camera.position.z };
+          cameraLookAt = window.Graph.cameraTarget();
+          cameraUp = { x: camera.up.x, y: camera.up.y, z: camera.up.z };
+        }
+      } catch (e) {
+        console.warn('Could not save camera position:', e);
+      }
+      
+      // Store current graph data with positions
+      const currentData = window.Graph.graphData();
+      
+      // Update graph settings
+      window.Graph
+        .linkColor(colors.linkColor)
+        .linkDirectionalArrowColor(colors.arrowColor)
+        .linkWidth(isDark ? 0.5 : 1.0)
+        .backgroundColor(colors.bgColor);
+      
+      // Force a complete refresh to update node appearance
+      window.Graph.graphData({ nodes: [], links: [] }); // Clear
+      
+      // Restore the data with a small delay to ensure proper rendering
+      setTimeout(() => {
+        window.Graph.graphData(currentData);
+        
+        // Restore camera position if we were able to save it
+        if (cameraPosition) {
+          window.Graph.cameraPosition(
+            cameraPosition,
+            cameraLookAt,
+            500 // transition duration in ms
+          );
+          
+          // Restore camera up vector
+          if (cameraUp) {
+            window.Graph.camera().up.set(cameraUp.x, cameraUp.y, cameraUp.z);
+          }
+        }
+      }, 50);
+    }
+  } else if (currentViewMode === 'uml') {
+    // For UML view, we don't need to do anything special,
+    // the image should remain unchanged when theme changes
   }
 }

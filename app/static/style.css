@@ -57,23 +57,65 @@ canvas {
   overflow: hidden;
 }
 
-/* Modern theme toggle button styling */
+/* Modern theme toggle button styling - Enhanced */
 #themeToggle {
-  transition: background-color 0.2s;
+  transition: background-color 0.25s, transform 0.2s;
   outline: 2px solid transparent;
   outline-offset: 2px;
+  overflow: visible;
 }
 
 #themeToggle span {
-  transition: transform 0.2s, background-color 0.2s;
+  transition: transform 0.25s ease-in-out, background-color 0.25s;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+#themeToggle:hover span {
+  transform: translateX(0.5px) scale(1.1);
+}
+
+.dark #themeToggle:hover span {
+  transform: translateX(1.5rem) scale(1.1);
 }
 
 #themeToggle:focus {
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
 }
 
-#themeToggle:hover {
-  transform: scale(1.1);
+/* Theme toggle icons with improved visibility */
+#themeToggle svg {
+  transition: opacity 0.2s, transform 0.2s;
+  stroke-width: 2;
+}
+
+#themeToggle:hover svg {
+  transform: rotate(5deg);
+}
+
+/* Fixed positioning tooltip for theme toggle */
+#themeToggle::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: -2rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(0);
+  background: rgba(0,0,0,0.7);
+  color: white;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 50;
+}
+
+#themeToggle:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
 }
 
 /* Theme toggle icons transition */

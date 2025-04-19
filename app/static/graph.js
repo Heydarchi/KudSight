@@ -220,28 +220,9 @@ function getLinkLabel(link) {
 
 // Listen for theme changes to update graph node styling
 window.addEventListener('themechange', (e) => {
-  const isDark = e.detail.theme === THEMES.DARK;
-  
-  // Update colors based on new theme
-  const colors = getNodeColorScheme(isDark);
-  
-  // Update graph settings including link width for better visibility in light mode
-  if (Graph) {
-    Graph
-      .linkColor(colors.linkColor)
-      .linkDirectionalArrowColor(colors.arrowColor)
-      .linkWidth(isDark ? 0.5 : 1.0)
-      .backgroundColor(colors.bgColor);
-    
-    // If we have graph data loaded, force a complete refresh
-    if (originalGraphData) {
-      const currentData = Graph.graphData();
-      Graph.graphData({ nodes: [], links: [] }); // Clear
-      setTimeout(() => {
-        Graph.graphData(currentData); // Reload with same data to force full refresh
-      }, 10);
-    }
-  }
+  // Theme-manager.js now handles the theme transition logic
+  // We can remove the duplicated code here since updateUiForTheme
+  // will call preserveCurrentView() which handles all the rendering logic
 });
 
 // Initialize graph on page load
