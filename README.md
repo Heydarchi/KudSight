@@ -1,4 +1,4 @@
-# KudSight
+# KudSight <img src="app/static/favicon.ico" alt="KudSight Favicon" width="32">
 
 
  **This app is experimental and has not fully tested !**
