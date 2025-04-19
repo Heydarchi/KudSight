@@ -348,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Filter nodes: Keep only the selected nodes
-    originalGraphData.nodes.filter(node => selectedIdsSet.has(node.id));
+    const filteredNodes = originalGraphData.nodes.filter(node => selectedIdsSet.has(node.id));
 
     // Create the filtered data object
     const filteredData = {
@@ -435,7 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Screenshot button handler ---
   const screenshotBtn = document.getElementById('screenshotBtn');
   const contentArea = document.getElementById('content-area');
-  
+
   if (screenshotBtn && contentArea) {
     screenshotBtn.addEventListener('click', () => {
       // Create a filename based on the current view mode and file
@@ -453,10 +453,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
       filename = `${filename}-${timestamp}.png`;
       
-      // Get the appropriate container based on current view mode
-      let targetElement = currentViewMode === '3d' 
-        ? document.getElementById('graph-container')
-        : document.getElementById('uml-image-container');
+      // For 3D mode, capture the entire element containing the 3D graph
+      // For UML mode, capture the container with the image
+      let targetElement;
+      
+      if (currentViewMode === '3d') {
+        targetElement = document.getElementById('graph-container');
+      } else {
+        targetElement = document.getElementById('uml-image-container');
+      }
       
       // If specific container not found, fall back to content-area
       if (!targetElement) {

@@ -94,7 +94,7 @@ function createUMLNode(node) {
   return new THREE.Mesh(geometry, material);
 }
 
-// Update the initGraph function for better link visibility
+// Update the initGraph function to ensure renderer is accessible
 function initGraph() {
   const isDarkTheme = document.documentElement.classList.contains('dark');
   const colors = getNodeColorScheme(isDarkTheme);
@@ -102,11 +102,14 @@ function initGraph() {
   // Use theme-aware constants
   const ARROW_SIZE = 6;
   const ARROW_COLOR = colors.arrowColor;
-  const LINK_WIDTH = isDarkTheme ? 0.5 : 1.0; // Use thicker links in light mode for better visibility
+  const LINK_WIDTH = isDarkTheme ? 0.5 : 1.0;
   const LINK_COLOR = colors.linkColor;
 
   // Create the graph instance with theme-aware settings
-  Graph = ForceGraph3D()(document.getElementById('3d-graph'))
+  Graph = ForceGraph3D({ 
+    alpha: true,
+    preserveDrawingBuffer: true // Important for screenshots
+  })(document.getElementById('3d-graph'))
     .nodeThreeObject(createUMLNode)
     .nodeLabel(getNodeLabel)
     .linkLabel(getLinkLabel)
@@ -144,12 +147,19 @@ export function loadGraphData(filename = 'data.json') {
       const baseName = filename.replace(/\.json$/, '');
       const posFile = baseName + '.pos.json';
 
-      fetch('/out/' + posFile)
-        .then(posRes => {
-          if (!posRes.ok) throw new Error('No position file');
-          return posRes.json();
+      // First check if the position file exists to avoid 404 errors
+      fetch('/out/' + posFile, { method: 'HEAD' })
+        .then(headRes => {
+          if (headRes.ok) {
+            // Position file exists, fetch it
+            return fetch('/out/' + posFile).then(res => res.json());
+          } else {
+            // Position file doesn't exist, continue without it
+            throw new Error('No position file');
+          }
         })
         .then(posData => {
+          // Apply saved positions to nodes
           data.nodes.forEach(node => {
             const saved = posData[node.id];
             if (saved) {
@@ -161,17 +171,21 @@ export function loadGraphData(filename = 'data.json') {
               node.fz = saved.z;
             }
           });
+          console.log('Applied saved node positions from', posFile);
         })
-        .catch(() => {
-          console.warn(`No position file found for ${filename}`);
+        .catch((err) => {
+          // Suppress 404 error message for pos files since they're optional
+          console.log(`No position file found for ${filename}`);
         })
         .finally(() => {
+          // Clean up data and prepare graph
           data.links = (data.links || []).filter(link =>
             link &&
             link.source && link.target && link.relation &&
             data.nodes.find(n => n.id === link.source) &&
             data.nodes.find(n => n.id === link.target)
           );
+          
           // Store original data
           originalGraphData = data;
           Graph.graphData(data);

@@ -12,8 +12,8 @@ export function captureScreenshot(element, filename = 'kudsight-screenshot.png')
   // Show capture animation
   showCaptureAnimation(element);
   
-  // Determine if we need to use a special method for 3D
-  const is3DGraph = element.querySelector('#3d-graph canvas');
+  // Check if we're in 3D mode by checking the container ID
+  const is3DGraph = element.id === 'graph-container';
   
   if (is3DGraph) {
     // For 3D graph, we use the renderer's extract capability
@@ -64,20 +64,42 @@ function showCaptureAnimation(element) {
 // Capture a 3D canvas
 function capture3DGraph(filename) {
   try {
-    // Get the 3D graph renderer
-    const renderer = window.Graph?.renderer();
+    // Access the Graph object via window
+    if (!window.Graph) {
+      console.error('3D Graph not available');
+      showScreenshotError('3D Graph not available');
+      return;
+    }
     
-    if (!renderer) {
+    // Access the renderer directly from the Graph object
+    const renderer = window.Graph.renderer();
+    
+    if (!renderer || !renderer.domElement) {
       console.error('3D renderer not available');
       showScreenshotError('3D renderer not available');
       return;
     }
     
-    // Capture the canvas content
-    const dataURL = renderer.domElement.toDataURL('image/png');
-    // Trigger download
-    downloadImage(dataURL, filename);
+    // Force a render to ensure the most current state is captured
+    window.Graph.renderer().render(window.Graph.scene(), window.Graph.camera());
     
+    // Capture the canvas content - use preserveDrawingBuffer option if needed
+    try {
+      const dataURL = renderer.domElement.toDataURL('image/png');
+      // Trigger download
+      downloadImage(dataURL, filename);
+    } catch (err) {
+      console.error('Error capturing canvas:', err);
+      
+      // Fallback to html2canvas if direct canvas capture fails
+      const graphElement = document.getElementById('3d-graph');
+      if (graphElement) {
+        console.log('Falling back to html2canvas for 3D graph');
+        captureHTMLElement(graphElement, filename);
+      } else {
+        showScreenshotError('Failed to capture 3D screenshot');
+      }
+    }
   } catch (error) {
     console.error('Error capturing 3D screenshot:', error);
     showScreenshotError('Failed to capture 3D screenshot');
@@ -106,7 +128,9 @@ function processHTMLCapture(element, filename) {
     backgroundColor: getComputedStyle(element).backgroundColor || '#ffffff',
     scale: 2, // Higher quality
     logging: false,
-    useCORS: true
+    useCORS: true,
+    allowTaint: true, // Allow tainted canvas
+    foreignObjectRendering: true // Try to use foreignObject rendering
   }).then(canvas => {
     try {
       const dataURL = canvas.toDataURL('image/png');
