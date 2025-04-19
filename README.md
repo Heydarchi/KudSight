@@ -22,6 +22,7 @@
 -  Updated Docker image for easy deployment
 
 
+
 ## 🔧 Core Features
 
 | Category | Description |
@@ -32,6 +33,15 @@
 |  UI & UX | - Sidebar filtering by Category and Items<br>- Node focus, reset, zoom/pan controls<br>- Dark/Light theme toggle |
 |  Export | - PNG and PlantUML output<br>- Screenshot functionality<br>- Node position/layout persistence |
 |  Tooling | - Web-based UI and CLI options<br>- Dockerized for easy, cross-platform use |
+
+
+### 📸 Screenshots
+
+<p align="center">
+  <img src="screenshots/screenshot-dark-1.png" alt="KudSight UI" width="600"/>
+  <img src="screenshots/screenshot-dark-orbit-1.png" alt="Graph View" width="600"/>
+  <img src="screenshots/screenshot-light-uml-1.png" alt="Dark Theme" width="600"/>
+</p>
 
 
 
