@@ -20,6 +20,19 @@ def index():
     return render_template("index.html", version=APP_VERSION)
 
 
+@app.route("/favicon.ico")
+def favicon():
+    try:
+        return send_from_directory(
+            os.path.join(app.root_path, "static"),
+            "favicon.ico",
+            mimetype="image/vnd.microsoft.icon",
+        )
+    except:
+        # Return a default empty favicon if file doesn't exist
+        return "", 204
+
+
 @app.route("/upload", methods=["POST"])
 def upload_folder():
     folder_path = request.form.get("folderPath")

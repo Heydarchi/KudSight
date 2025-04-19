@@ -2,10 +2,12 @@
 <html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KudSight - Code Visualization</title>
-  <!-- Add Tailwind CSS via CDN -->
+  <!-- Replace CDN with proper production setup -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
+    // This configuration will be replaced by a proper build process in production
     tailwind.config = {
       darkMode: 'class',
       theme: {
@@ -27,7 +29,14 @@
     }
   </script>
   <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
   <script src="//cdn.jsdelivr.net/npm/3d-force-graph"></script>
+  <!-- Production Notice -->
+  <script>
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      console.warn('Warning: Using Tailwind CSS via CDN in production. For better performance, consider installing Tailwind CSS as a PostCSS plugin or using the Tailwind CLI.');
+    }
+  </script>
 </head>
 <body class="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 h-screen flex flex-col transition-colors duration-200">
 
@@ -38,32 +47,33 @@
     <button id="analyzeBtn" class="btn bg-primary-light hover:bg-primary-hover-light dark:bg-primary-dark dark:hover:bg-primary-hover-dark text-white px-4 py-2 rounded transition-colors">Analyze</button>
     <span id="status" class="text-sm text-gray-600 dark:text-gray-300"></span>
     
-    <!-- View Mode Switcher -->
-    <div id="view-mode-switcher" class="flex items-center gap-2 bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded ml-3">
-      <label class="text-sm text-gray-600 dark:text-gray-300">View:</label>
-      <div class="flex items-center">
+    <!-- View Mode Switcher - New Modern Style -->
+    <div class="flex items-center gap-3 bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded-full ml-4">
+      <span class="text-sm font-medium text-gray-600 dark:text-gray-300">View:</span>
+      <div class="relative flex items-center p-1 bg-gray-300 dark:bg-gray-600 rounded-full">
         <input type="radio" id="viewMode3D" name="viewMode" value="3d" checked
-               class="form-radio text-primary focus:ring-primary" />
-        <label for="viewMode3D" class="ml-1 text-sm">3D Graph</label>
-      </div>
-      <div class="flex items-center ml-2">
+               class="sr-only peer/3d" />
         <input type="radio" id="viewModeUML" name="viewMode" value="uml"
-               class="form-radio text-primary focus:ring-primary" />
-        <label for="viewModeUML" class="ml-1 text-sm">UML Diagram</label>
+               class="sr-only peer/uml" />
+        <label for="viewMode3D" class="cursor-pointer px-3 py-1 rounded-full text-sm transition-all z-10 peer-checked/3d:text-gray-800 peer-checked/3d:bg-white dark:peer-checked/3d:bg-primary-dark dark:peer-checked/3d:text-white">3D Graph</label>
+        <label for="viewModeUML" class="cursor-pointer px-3 py-1 rounded-full text-sm transition-all z-10 peer-checked/uml:text-gray-800 peer-checked/uml:bg-white dark:peer-checked/uml:bg-primary-dark dark:peer-checked/uml:text-white">UML Diagram</label>
       </div>
     </div>
     
-    <!-- Theme Toggle -->
-    <div class="ml-4 flex items-center">
-      <button id="themeToggle" class="flex items-center justify-center w-8 h-8 rounded-full border border-gray-300 dark:border-gray-600 focus:outline-none hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-        <!-- Sun icon for dark mode (shown when in dark mode) -->
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 dark:text-yellow-200 theme-light-icon hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-        </svg>
-        <!-- Moon icon for light mode (shown when in light mode) -->
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 theme-dark-icon dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-        </svg>
+    <!-- Theme Toggle - New Modern Style -->
+    <div class="ml-4">
+      <button id="themeToggle" class="relative inline-flex h-6 w-12 items-center rounded-full bg-gray-300 dark:bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-primary-dark">
+        <span class="sr-only">Toggle theme</span>
+        <span class="inline-block h-5 w-5 transform rounded-full bg-white transition-transform translate-x-0.5 dark:translate-x-6 dark:bg-gray-900 flex items-center justify-center">
+          <!-- Sun icon (visible in dark mode) -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-yellow-500 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <!-- Moon icon (visible in light mode) -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-gray-600 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        </span>
       </button>
     </div>
     

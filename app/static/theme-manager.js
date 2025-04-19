@@ -2,6 +2,7 @@
  * Theme Manager for KudSight
  * Handles switching between light and dark themes
  */
+import * as THREE from 'https://esm.sh/three'; // Add THREE import
 
 // Theme constants
 export const THEMES = {

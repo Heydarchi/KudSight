@@ -3,7 +3,8 @@ import * as THREE from 'https://esm.sh/three';
 import { loadGraphData, Graph, originalGraphData } from './graph.js';
 import { getSelectedNodeIds, clearSelection } from './panel.js';
 import { styleFormElements } from './tailwind-helpers.js';
-import { initTheme, toggleTheme, THEMES, updateUiForTheme } from './theme-manager.js';
+import { initTheme, toggleTheme, THEMES, updateUiForTheme, getNodeColorScheme } from './theme-manager.js';
+import { initAnimations } from './animations.js';
 
 let currentGraphFile = null; // Start with null
 let currentViewMode = '3d'; // Default view mode
@@ -181,6 +182,9 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Apply Tailwind styles to form elements after theme is set
   styleFormElements();
+  
+  // Initialize animations
+  initAnimations();
 
   const folderInput = document.getElementById('folderPath');
   const status = document.getElementById('status');
@@ -361,20 +365,39 @@ document.addEventListener('DOMContentLoaded', () => {
   viewMode3DRadio.addEventListener('change', () => {
     if (viewMode3DRadio.checked) {
       setViewMode('3d');
+      // Add animation to the switch for better feedback
+      document.querySelectorAll('#view-mode-switcher label').forEach(label => {
+        label.classList.add('transition-all');
+      });
     }
   });
 
   viewModeUMLRadio.addEventListener('change', () => {
     if (viewModeUMLRadio.checked) {
       setViewMode('uml');
+      // Add animation to the switch for better feedback
+      document.querySelectorAll('#view-mode-switcher label').forEach(label => {
+        label.classList.add('transition-all');
+      });
     }
   });
 
-  // Theme toggle button
+  // Theme toggle button with improved animation
   const themeToggleBtn = document.getElementById('themeToggle');
   themeToggleBtn.addEventListener('click', () => {
     const newTheme = toggleTheme();
     updateUiForTheme(newTheme);
+    
+    // Add ripple effect to the toggle button
+    const ripple = document.createElement('span');
+    ripple.classList.add('absolute', 'inset-0', 'rounded-full', 'opacity-30', 
+      newTheme === THEMES.DARK ? 'bg-gray-400' : 'bg-blue-300');
+    themeToggleBtn.appendChild(ripple);
+    
+    // Remove ripple after animation
+    setTimeout(() => {
+      ripple.remove();
+    }, 300);
     
     // Update graph or UML view based on current mode
     if (currentViewMode === '3d' && Graph) {

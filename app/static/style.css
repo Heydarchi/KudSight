@@ -57,9 +57,19 @@ canvas {
   overflow: hidden;
 }
 
-/* Theme toggle button styling */
+/* Modern theme toggle button styling */
 #themeToggle {
-  transition: all 0.2s ease;
+  transition: background-color 0.2s;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+#themeToggle span {
+  transition: transform 0.2s, background-color 0.2s;
+}
+
+#themeToggle:focus {
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5);
 }
 
 #themeToggle:hover {
@@ -67,8 +77,36 @@ canvas {
 }
 
 /* Theme toggle icons transition */
+#themeToggle svg {
+  transition: opacity 0.2s;
+}
+
 .theme-light-icon, .theme-dark-icon {
   transition: opacity 0.3s ease;
+}
+
+/* Fix for inconsistent icon display in Firefox */
+.dark #themeToggle svg.hidden {
+  display: none;
+}
+
+/* Additional animation for toggle switch */
+#themeToggle:active span {
+  width: 24px;
+}
+
+/* View mode radio button styling */
+input[type="radio"].sr-only + label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+/* View mode switcher animation */
+#viewMode3D:checked ~ label[for="viewMode3D"],
+#viewModeUML:checked ~ label[for="viewModeUML"] {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* Add styles for the graph tooltips */
