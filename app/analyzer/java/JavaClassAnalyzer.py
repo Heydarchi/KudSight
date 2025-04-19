@@ -6,6 +6,11 @@ from analyzer.java.JavaVariableAnalyzer import *
 from analyzer.common.AnalyzerHelper import *
 from analyzer.common.CommentAnalyzer import *
 from utils.FileReader import *
+from model.AnalyzerEntities import (
+    VariableNode,
+    MethodNode,
+    Inheritance,
+)  # Explicit imports
 
 
 class JavaClassAnalyzer(AbstractAnalyzer):
@@ -17,106 +22,138 @@ class JavaClassAnalyzer(AbstractAnalyzer):
         self.classExtendPattern = dict()
         self.patternPackageName = dict()
         self.initPatterns()
+        self.templateParamPattern = r"<\s*([a-zA-Z_][a-zA-Z0-9_]*(?:\s*extends\s+[\w\.<>]+)?(?:,\s*[a-zA-Z_][a-zA-Z0-9_]*(?:\s*extends\s+[\w\.<>]+)?)*)\s*>"  # Java Generics
 
     def initPatterns(self):
-
+        # Pattern to find class or interface definitions, capturing modifiers, name, generics, extends, implements
+        # Make extends/implements capture non-greedy and handle whitespace/newlines better.
         self.pattern = [
-            "(\\;|\\{|\\})*(\\r|\\n)*\\s*(\\r|\\n)*(\\/\\/\\s?[a-zA-Z0-9_].*(\\r|\\n)?)?(\\r|\\n)?\\s?[(public|private)\\s+|(static)\\s+|(final)\\s+].*((class|interface|implements|extends)\\s+[a-zA-Z0-9_\\s]*)+[:{;]"
+            r"(?:/\*[^*]*\*/\s*)?"  # Optional comment before class declaration
+            r"^\s*(?:(public|private|protected)\s+)?((?:(?:static|abstract|final|sealed|non-sealed)\s+)*)"  # Modifiers (1, 2)
+            r"(class|interface|enum|record)\s+"  # Type (3)
+            r"([a-zA-Z_][a-zA-Z0-9_]*)"  # Name (4)
+            r"(?:\s*(<\s*[^>]+?\s*>))?"  # Generics (5) - Non-greedy
+            # Capture group 6: Extends list (non-greedy, stop before implements or {)
+            r"(?:\s+extends\s+([\w\.<>,\s]+?))?"
+            # Capture group 7: Implements list (non-greedy, stop before {)
+            r"(?:\s+implements\s+([\w\.<>,\s]+?))?"
+            r"\s*\{"  # Opening brace
         ]
-        self.classNamePattern = r"(class|interface)\s+([a-zA-Z_][a-zA-Z0-9_]*)"
+        # Simpler patterns kept for reference/fallback if needed, but main pattern is preferred
+        self.classNamePattern = (
+            r"(class|interface|enum|record)\s+([a-zA-Z_][a-zA-Z0-9_]*)"
+        )
+        self.classImplementPattern = r"implements\s+([\w\.<>,\s]+?)\s*(?:\{|extends)"  # Non-greedy match for implements list
+        self.classExtendPattern = r"extends\s+([\w\.<>,\s]+?)\s*(?:\{|implements)"  # Non-greedy match for extends list
+        self.patternPackageName = r"^\s*package\s+([a-zA-Z_][a-zA-Z0-9_.]+)\s*;"
 
-        self.classImplementPattern = "(implements)\\s+([a-zA-Z0-9_])+[:{;\\r\\n\\s]"
-        self.classExtendPattern = "(extends)\\s+([a-zA-Z0-9_])+[:{;\\r\\n\\s]"
-        self.patternPackageName = r"^\s*package\s+([a-zA-Z0-9_.]+)\s*;"
-
-    def analyze(self, filePath, lang=None, inputStr=None):
-        if inputStr == None:
+    def analyze(
+        self, filePath, lang=FileTypeEnum.JAVA, inputStr=None, current_package=None
+    ):
+        if inputStr is None:
             fileReader = FileReader()
             commentAnalyzer = CommentAnalyzer()
-            fileContent = commentAnalyzer.analyze(filePath, FileTypeEnum.JAVA)
+            # Ensure lang is passed correctly
+            fileContent = commentAnalyzer.analyze(filePath, lang)
+            package_name = self.extract_package_name(fileContent) or current_package
         else:
             fileContent = inputStr
-
-        package_name = self.extract_package_name(fileContent)
+            commentAnalyzer = CommentAnalyzer()
+            # Use provided package context for inner classes
+            package_name = current_package
 
         listOfClasses = list()
-        for pattern in self.pattern:
-            tempContent = fileContent
+        current_search_pos = 0
 
-            match = self.find_class_pattern(pattern, tempContent)
-            while match != None:
-                classInfo = ClassNode()
+        while current_search_pos < len(fileContent):
+            match = self.find_class_pattern(
+                self.pattern[0], fileContent[current_search_pos:]
+            )
+            if match is None:
+                break
 
-                classInfo.package = package_name
+            abs_match_start = current_search_pos + match.start()
+            abs_match_end = current_search_pos + match.end()
+            class_header = fileContent[abs_match_start:abs_match_end]
 
-                classInfo.name = self.extract_class_name(
-                    tempContent[match.start() : match.end()]
+            # Find the boundary of the current class definition
+            boundary_helper = AnalyzerHelper()
+            # Start search right after the opening brace matched by the regex
+            boundary_search_start = abs_match_end - 1
+            classBoundary = boundary_helper.findClassBoundary(
+                fileContent[boundary_search_start:]
+            )
+
+            if classBoundary <= 0:  # Could not find matching '}'
+                # Avoid infinite loop, move past the header
+                current_search_pos = abs_match_end
+                continue
+
+            # Extract content *within* the class braces
+            class_inner_content = fileContent[
+                abs_match_end : boundary_search_start + classBoundary
+            ]
+            classInfo = ClassNode()
+            classInfo.package = package_name
+
+            classInfo.name = match.group(4).strip() if match.group(4) else None
+            if not classInfo.name:
+                current_search_pos = boundary_search_start + classBoundary + 1
+                continue
+
+            # Extract generic parameters if present
+            generic_params_str = match.group(5)
+            if generic_params_str:
+                classInfo.params = self.extract_generic_params(generic_params_str)
+
+            # Extract inheritance (extends/implements)
+            extends_str = match.group(6)
+            implements_str = match.group(7)
+            classInfo.relations.extend(
+                self.extract_class_inheritances(extends_str, implements_str)
+            )
+
+            classInfo = self.extract_class_spec(match, classInfo)  # Use match groups
+
+            # Analyze methods *within* the class boundary
+            methodAnalyzer = JavaMethodAnalyzer()
+            classInfo.methods = methodAnalyzer.analyze(None, lang, class_inner_content)
+
+            # Analyze variables *within* the class boundary
+            variableAnalyzer = JavaVariableAnalyzer()
+            classInfo.variables = variableAnalyzer.analyze(
+                None, lang, class_inner_content
+            )
+
+            # Extract dependencies from members (variables, method returns, method params)
+            classInfo.relations.extend(
+                self.extract_relations_from_members(
+                    classInfo.methods,
+                    classInfo.variables,
+                    classInfo.relations,
+                    classInfo.params,  # Pass generic params defined for the class
                 )
+            )
 
-                classInfo.relations = self.extract_class_inheritances(
-                    tempContent[match.start() : match.end()]
-                )
+            # Analyze inner classes recursively, passing the inner content and package context
+            classAnalyzer = JavaClassAnalyzer()
+            inner_classes = classAnalyzer.analyze(
+                None,
+                lang,
+                inputStr=class_inner_content,
+                current_package=package_name,  # Pass package context
+            )
+            classInfo.classes.extend(inner_classes)
 
-                classInfo = self.extract_class_spec(
-                    tempContent[match.start() : match.end()], classInfo
-                )
+            listOfClasses.append(classInfo)
 
-                classBoundary = AnalyzerHelper().findClassBoundary(
-                    tempContent[match.start() :]
-                )
+            # Move search position past the current class definition
+            current_search_pos = boundary_search_start + classBoundary + 1
 
-                ### Find the variables & methods within the class's boundary
-                methods = JavaMethodAnalyzer().analyze(
-                    None,
-                    lang,
-                    tempContent[match.start() : (match.end() + classBoundary)],
-                )
-                classInfo.methods.extend(methods)
-
-                # Remove lines containing 'return' before passing to VariableAnalyzer
-                raw_class_body = tempContent[
-                    match.start() : (match.end() + classBoundary)
-                ]
-                cleaned_class_body = "\n".join(
-                    line
-                    for line in raw_class_body.splitlines()
-                    if "return" not in line.strip()
-                )
-                variables = JavaVariableAnalyzer().analyze(
-                    None, lang, cleaned_class_body
-                )
-
-                classInfo.variables.extend(variables)
-
-                classInfo.relations.extend(
-                    self.extract_relation_from_methods_and_params(
-                        classInfo.methods, classInfo.params, classInfo.relations
-                    )
-                )
-
-                classInfo.relations = self.remove_primitive_types(classInfo.relations)
-
-                classAnalyzer = JavaClassAnalyzer()
-                classInfo.classes = classAnalyzer.analyze(
-                    None,
-                    lang,
-                    inputStr=tempContent[match.end() : (match.end() + classBoundary)],
-                )
-
-                listOfClasses.append(classInfo)
-
-                tempContent = tempContent[match.end() + classBoundary :]
-                match = re.search(pattern, tempContent)
-
-        print(listOfClasses)
         return listOfClasses
 
     def find_class_pattern(self, pattern, inputStr):
-        match = re.search(pattern, inputStr)
-        if match != None:
-            return match
-        else:
-            return None
+        return re.search(pattern, inputStr, re.MULTILINE)
 
     def extract_class_name(self, inputStr):
         match = re.search(self.classNamePattern, inputStr)
@@ -125,88 +162,157 @@ class JavaClassAnalyzer(AbstractAnalyzer):
             return className
         return None
 
-    def extract_class_inheritances(self, inputStr):
+    def extract_generic_params(self, generic_str: str) -> list:
+        if (
+            not generic_str
+            or not generic_str.startswith("<")
+            or not generic_str.endswith(">")
+        ):
+            return []
+        content = generic_str[1:-1].strip()
+        params = []
+        level = 0
+        current_param = ""
+        raw_params = []
+        for char in content:
+            if char == "<":
+                level += 1
+            if char == ">":
+                level -= 1
+            if char == "," and level == 0:
+                raw_params.append(current_param.strip())
+                current_param = ""
+            else:
+                current_param += char
+        raw_params.append(current_param.strip())
+        for param_def in raw_params:
+            if param_def:
+                param_name = param_def.split()[0]
+                params.append(param_name)
+        return params
+
+    def extract_class_inheritances(self, extends_str: str, implements_str: str):
         inheritance = []
 
-        # Your existing logic for Java is good, keep that
-        match = re.search(self.classExtendPattern, inputStr)
-        if match:
-            inherit = Inheritance(
-                name=" ".join(
-                    inputStr[match.start() : match.end()].replace("\n", " ").split()
-                )
-                .strip()
-                .split(" ")[1],
-                relationship=InheritanceEnum.EXTENDED,
-            )
-            inheritance.append(inherit)
+        def process_inheritance_list(type_str, relationship):
+            if not type_str:
+                return
+            # Replace newlines with spaces to handle multi-line lists
+            type_str = type_str.replace("\n", " ").replace("\r", " ")
+            # Handle generics within the list (replace comma inside <>)
+            level = 0
+            processed_str = ""
+            for char in type_str:
+                if char == "<":
+                    level += 1
+                elif char == ">":
+                    level -= 1
+                # Replace comma only if outside generics
+                elif char == "," and level == 0:
+                    processed_str += "@@SEP@@"  # Use separator placeholder
+                else:
+                    processed_str += char
 
-        match = re.search(self.classImplementPattern, inputStr)
-        if match:
-            inherit = Inheritance(
-                name=" ".join(
-                    inputStr[match.start() : match.end()].replace("\n", " ").split()
-                )
-                .strip()
-                .split(" ")[1],
-                relationship=InheritanceEnum.IMPLEMENTED,
-            )
-            inheritance.append(inherit)
+            items = processed_str.split("@@SEP@@")
+            for item in items:
+                # Clean whitespace thoroughly
+                name = item.strip()
+                # Remove any leftover keywords (redundant if regex is good, but safe)
+                name = name.replace("implements", "").replace("extends", "").strip()
+                # Ensure name is not empty after cleaning
+                if name:
+                    # Add the cleaned name
+                    inheritance.append(
+                        Inheritance(name=name, relationship=relationship)
+                    )
 
+        process_inheritance_list(extends_str, InheritanceEnum.EXTENDED)
+        process_inheritance_list(implements_str, InheritanceEnum.IMPLEMENTED)
         return inheritance
 
-    def extract_class_spec(self, inputStr: str, classInfo: ClassNode):
-        splittedStr = inputStr.split()
-        if "public" in splittedStr:
+    def extract_class_spec(self, match, classInfo: ClassNode):
+        access_modifier = match.group(1)
+        other_modifiers_str = match.group(2).strip() if match.group(2) else ""
+        class_type = match.group(3)
+
+        if access_modifier == "public":
             classInfo.accessLevel = AccessEnum.PUBLIC
-        elif "protected" in splittedStr:
+        elif access_modifier == "protected":
             classInfo.accessLevel = AccessEnum.PROTECTED
-        else:
+        elif access_modifier == "private":
             classInfo.accessLevel = AccessEnum.PRIVATE
+        else:
+            classInfo.accessLevel = AccessEnum.PROTECTED
 
-        if "final" in splittedStr:
-            classInfo.isFinal = True
+        classInfo.isStatic = "static" in other_modifiers_str
+        classInfo.isFinal = "final" in other_modifiers_str
+        classInfo.isAbstract = "abstract" in other_modifiers_str
 
-        if "interface" in splittedStr:
+        if class_type == "interface":
             classInfo.isInterface = True
+            classInfo.isAbstract = True
+        elif class_type == "enum":
+            classInfo.isFinal = True
+        elif class_type == "record":
+            classInfo.isFinal = True
 
         return classInfo
 
     def extract_package_name(self, inputStr: str):
-        pattern = self.patternPackageName
-        if not pattern:
-            return None
-        match = re.search(pattern, inputStr)
-        if match != None:
-            return inputStr[match.start() : match.end()].strip().split(" ")[1]
+        match = re.search(self.patternPackageName, inputStr, re.MULTILINE)
+        if match:
+            return match.group(1).strip()
         return None
 
-    def extract_relation_from_methods_and_params(self, methods, params, relations):
+    def extract_relations_from_members(
+        self,
+        methods: list,
+        variables: list,
+        existing_relations: list,
+        class_params: list,
+    ):
         inheritance_list = list()
-        for method in methods:
-            for param in method.params:
-                if not any(relation.name == param for relation in relations):
-                    inheritance_list.append(
-                        Inheritance(
-                            name=param.strip(), relationship=InheritanceEnum.DEPENDED
-                        )
-                    )
 
-        for param in params:
-            if not any(relation.name == param for relation in relations):
-                inheritance_list.append(
-                    Inheritance(
-                        name=param.strip(), relationship=InheritanceEnum.DEPENDED
-                    )
-                )
-        print("inheritance_list: ", inheritance_list)
-        return inheritance_list
+        # Use a simple cleaner for dependency check (remove array brackets, varargs)
+        def clean_dep_type(name: str) -> str:
+            if not isinstance(name, str):
+                return ""
+            name = name.strip().replace("[]", "").replace("...", "")
+            # Remove annotations
+            while name.startswith("@"):
+                name = " ".join(name.split()[1:])
+            return name
 
-    def extract_class_params(self, inputStr):
-        return JavaMethodAnalyzer().extractParams(inputStr)
+        existing_relation_names = {
+            clean_dep_type(re.sub(r"<.*?>", "", rel.name)) for rel in existing_relations
+        }
+        template_params_to_ignore = set(class_params)
 
-    def remove_primitive_types(self, relations):
-        primitives = {
+        # Known containers to look inside
+        known_containers = {
+            "List",
+            "ArrayList",
+            "LinkedList",
+            "Map",
+            "HashMap",
+            "Set",
+            "HashSet",
+            "Collection",
+            "Iterable",
+            "Optional",
+            "Future",
+            "CompletableFuture",
+            "Observable",
+            "Flowable",
+            "Single",
+            "Maybe",
+            "Completable",  # RxJava/Reactive types
+            "LiveData",
+            "MutableLiveData",  # Android Architecture Components
+            "StateFlow",
+            "SharedFlow",  # Kotlin Coroutines Flow (might appear in Java)
+        }
+        primitives_and_common_to_ignore = {
             "void",
             "boolean",
             "byte",
@@ -216,39 +322,130 @@ class JavaClassAnalyzer(AbstractAnalyzer):
             "long",
             "float",
             "double",
-            "String",
             "Object",
+            "String",
+            "CharSequence",
+            "Number",
+            "Boolean",
+            "Byte",
+            "Character",
+            "Short",
+            "Integer",
+            "Long",
+            "Float",
+            "Double",
+            "Void",
+            "Math",
+            "System",
+            "Thread",
+            "Runnable",
+            "Exception",
+            "RuntimeException",
+            "Error",
+            "Throwable",
+            "Class",
+            "ClassLoader",
+            "Package",
+            "Process",
+            "Runtime",
+            "Enum",
+            "Override",
+            "Deprecated",
+            "SuppressWarnings",
+            "Collections",
+            "Iterator",
+            "Date",
+            "Calendar",
+            "UUID",
+            "Arrays",
+            "Objects",
+            "Properties",
+            "Random",
+            "Scanner",
+            "Timer",
+            "TimerTask",
+            "File",
+            "InputStream",
+            "OutputStream",
+            "Reader",
+            "Writer",
+            "Serializable",
+            "Closeable",
+            "Flushable",
         }
 
-        # Java modifiers to remove before matching
-        modifiers = {
-            "public",
-            "protected",
-            "private",
-            "static",
-            "final",
-            "abstract",
-            "synchronized",
-            "volatile",
-            "transient",
-        }
+        def add_dependency_recursive(type_name: str):
+            if not type_name:
+                return
 
-        def clean_type(name: str) -> list[str]:
-            # Remove generic parts like <T>, <String, Integer>
-            name = re.sub(r"<.*?>", "", name)
-            # Remove array brackets, parentheses, etc.
-            name = name.replace("[]", " ").replace("()", " ").replace("...", " ")
-            # Tokenize by space and strip modifiers
-            parts = [
-                p.strip() for p in name.split() if p.strip() and p not in modifiers
-            ]
-            return parts
+            # --- Step 1: Initial Clean (remove array/varargs, annotations) ---
+            cleaned_full_type = clean_dep_type(type_name)
 
-        def is_primitive(name: str) -> bool:
-            cleaned = clean_type(name)
-            return any(part in primitives for part in cleaned)
+            # --- Step 2: Check for known generic containers ---
+            generic_match = re.match(
+                r"([a-zA-Z_][a-zA-Z0-9_.]+)\s*<(.+)>", cleaned_full_type
+            )
+            if generic_match:
+                container_name = generic_match.group(1).split(".")[
+                    -1
+                ]  # Simple name for check
+                inner_types_str = generic_match.group(2)
 
-        return [rel for rel in relations if not is_primitive(rel.name)]
+                if container_name in known_containers:
+                    # It's a known container, process inner types
+                    level = 0
+                    current_inner = ""
+                    inner_types = []
+                    for char in inner_types_str:
+                        if char == "<":
+                            level += 1
+                        elif char == ">":
+                            level -= 1
+                        elif char == "," and level == 0:
+                            inner_types.append(current_inner.strip())
+                            current_inner = ""
+                        else:
+                            current_inner += char
+                    inner_types.append(current_inner.strip())
+
+                    for inner_type in inner_types:
+                        # Handle wildcard '?' and '?' extends/super - ignore them
+                        if inner_type == "?" or inner_type.startswith("? "):
+                            continue
+                        add_dependency_recursive(inner_type)  # Recurse
+                    return  # Stop processing the container itself
+
+            # --- Step 3: If not a container, process the type itself ---
+            # Strip generics for the final check and storage
+            cleaned_base_type = re.sub(r"<.*?>", "", cleaned_full_type).strip()
+            simple_base_name = cleaned_base_type.split(".")[
+                -1
+            ]  # Use simple name for checks
+
+            # --- Step 4: Check if the cleaned base type should be ignored ---
+            if (
+                cleaned_base_type
+                and cleaned_base_type not in existing_relation_names
+                and simple_base_name not in primitives_and_common_to_ignore
+                and cleaned_base_type
+                not in template_params_to_ignore  # Check against class generic params
+            ):
+                inheritance_list.append(
+                    Inheritance(
+                        name=cleaned_base_type, relationship=InheritanceEnum.DEPENDED
+                    )
+                )
+                existing_relation_names.add(cleaned_base_type)
+
+        for var in variables:
+            add_dependency_recursive(var.dataType)
+
+        for method in methods:
+            add_dependency_recursive(method.dataType)
+            for param_type in method.params:
+                add_dependency_recursive(param_type)
+
+        return inheritance_list
 
 
 if __name__ == "__main__":

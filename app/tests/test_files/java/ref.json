@@ -1,0 +1,441 @@
+{
+    "nodes": [
+        {
+            "package": "ComplexGenerics",
+            "id": "ComplexGenerics.DataTransformerString, Integer",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "com.android.systemui.car",
+            "id": "com.android.systemui.car.AtomicBoolean",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "com.android.systemui.car",
+            "id": "com.android.systemui.car.CarDeviceProvisionedController",
+            "type": "interface",
+            "isAbstract": true,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [
+                "isCurrentUserSetupInProgress(): boolean",
+                "isCurrentUserFullySetup(): boolean"
+            ],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "com.android.systemui.car",
+            "id": "com.android.systemui.car.CarDeviceProvisionedControllerImpl",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [
+                "private Uri mUserSetupInProgressUri",
+                "private ContentObserver mCarSettingsObserver",
+                "private SecureSettings mSecureSettings",
+                "public AtomicBoolean mInitted",
+                "protected Int temp"
+            ],
+            "methods": [
+                "CarDeviceProvisionedControllerImpl(SecureSettings, GlobalSettings, UserTracker, DumpManager, Handler, Handler, Executor): void",
+                "init(): void",
+                "isUserSetupInProgress(int): boolean",
+                "isCurrentUserSetupInProgress(): boolean",
+                "addCallback(DeviceProvisionedListener): void",
+                "notifyUserSetupInProgressChanged(): void"
+            ],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "com.android.systemui.car",
+            "id": "com.android.systemui.car.ContentObserver",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "com.android.systemui.car",
+            "id": "com.android.systemui.car.DeviceProvisionedController",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "com.android.systemui.car",
+            "id": "com.android.systemui.car.DeviceProvisionedControllerImpl",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "com.android.systemui.car",
+            "id": "com.android.systemui.car.DeviceProvisionedListener",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "com.android.systemui.car",
+            "id": "com.android.systemui.car.DumpManager",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "com.android.systemui.car",
+            "id": "com.android.systemui.car.Executor",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "com.android.systemui.car",
+            "id": "com.android.systemui.car.GlobalSettings",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "com.android.systemui.car",
+            "id": "com.android.systemui.car.Haha",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "com.android.systemui.car",
+            "id": "com.android.systemui.car.Handler",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "com.android.systemui.car",
+            "id": "com.android.systemui.car.InnerTestClass",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "com.android.systemui.car",
+            "id": "com.android.systemui.car.Int",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "com.android.systemui.car",
+            "id": "com.android.systemui.car.SecureSettings",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "com.android.systemui.car",
+            "id": "com.android.systemui.car.TestClass",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": true,
+            "attributes": [
+                "protected InnerTestClass innerTC"
+            ],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "com.android.systemui.car",
+            "id": "com.android.systemui.car.Uri",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "com.android.systemui.car",
+            "id": "com.android.systemui.car.UserTracker",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "com.kudsight.samples",
+            "id": "com.kudsight.samples.ComplexGenericsString, Integer",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "com.kudsight.samples",
+            "id": "com.kudsight.samples.DataProcessor<R>",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": true,
+            "attributes": [
+                "private Function<Object, R> processor"
+            ],
+            "methods": [
+                "DataProcessor(Function<Object, R>): void",
+                "process(Object): R"
+            ],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "com.kudsight.samples",
+            "id": "com.kudsight.samples.DataTransformer<I, O>",
+            "type": "interface",
+            "isAbstract": true,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "com.kudsight.samples",
+            "id": "com.kudsight.samples.Function",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "com.kudsight.samples",
+            "id": "com.kudsight.samples.StringProcessor",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [
+                "StringProcessor(): void",
+                "transform(String): Integer",
+                "transformBatch(List<String>): List<Integer>"
+            ],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        }
+    ],
+    "links": [
+        {
+            "source": "com.android.systemui.car.CarDeviceProvisionedController",
+            "target": "com.android.systemui.car.DeviceProvisionedController",
+            "relation": "extended"
+        },
+        {
+            "source": "com.android.systemui.car.CarDeviceProvisionedControllerImpl",
+            "target": "com.android.systemui.car.AtomicBoolean",
+            "relation": "depended"
+        },
+        {
+            "source": "com.android.systemui.car.CarDeviceProvisionedControllerImpl",
+            "target": "com.android.systemui.car.CarDeviceProvisionedController",
+            "relation": "implemented"
+        },
+        {
+            "source": "com.android.systemui.car.CarDeviceProvisionedControllerImpl",
+            "target": "com.android.systemui.car.ContentObserver",
+            "relation": "depended"
+        },
+        {
+            "source": "com.android.systemui.car.CarDeviceProvisionedControllerImpl",
+            "target": "com.android.systemui.car.DeviceProvisionedControllerImpl",
+            "relation": "extended"
+        },
+        {
+            "source": "com.android.systemui.car.CarDeviceProvisionedControllerImpl",
+            "target": "com.android.systemui.car.DeviceProvisionedListener",
+            "relation": "depended"
+        },
+        {
+            "source": "com.android.systemui.car.CarDeviceProvisionedControllerImpl",
+            "target": "com.android.systemui.car.DumpManager",
+            "relation": "depended"
+        },
+        {
+            "source": "com.android.systemui.car.CarDeviceProvisionedControllerImpl",
+            "target": "com.android.systemui.car.Executor",
+            "relation": "depended"
+        },
+        {
+            "source": "com.android.systemui.car.CarDeviceProvisionedControllerImpl",
+            "target": "com.android.systemui.car.GlobalSettings",
+            "relation": "depended"
+        },
+        {
+            "source": "com.android.systemui.car.CarDeviceProvisionedControllerImpl",
+            "target": "com.android.systemui.car.Handler",
+            "relation": "depended"
+        },
+        {
+            "source": "com.android.systemui.car.CarDeviceProvisionedControllerImpl",
+            "target": "com.android.systemui.car.Int",
+            "relation": "depended"
+        },
+        {
+            "source": "com.android.systemui.car.CarDeviceProvisionedControllerImpl",
+            "target": "com.android.systemui.car.SecureSettings",
+            "relation": "depended"
+        },
+        {
+            "source": "com.android.systemui.car.CarDeviceProvisionedControllerImpl",
+            "target": "com.android.systemui.car.Uri",
+            "relation": "depended"
+        },
+        {
+            "source": "com.android.systemui.car.CarDeviceProvisionedControllerImpl",
+            "target": "com.android.systemui.car.UserTracker",
+            "relation": "depended"
+        },
+        {
+            "source": "com.android.systemui.car.TestClass",
+            "target": "com.android.systemui.car.Haha",
+            "relation": "implemented"
+        },
+        {
+            "source": "com.android.systemui.car.TestClass",
+            "target": "com.android.systemui.car.InnerTestClass",
+            "relation": "depended"
+        },
+        {
+            "source": "com.kudsight.samples.DataProcessor<R>",
+            "target": "com.kudsight.samples.Function",
+            "relation": "depended"
+        },
+        {
+            "source": "com.kudsight.samples.StringProcessor",
+            "target": "ComplexGenerics.DataTransformerString, Integer",
+            "relation": "implemented"
+        },
+        {
+            "source": "com.kudsight.samples.StringProcessor",
+            "target": "com.kudsight.samples.ComplexGenericsString, Integer",
+            "relation": "extended"
+        }
+    ],
+    "analysisSourcePath": "/home/mhh/Projects/KudSight/app/tests/test_files/java"
+}

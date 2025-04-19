@@ -1,0 +1,330 @@
+{
+    "nodes": [
+        {
+            "package": "CompanyA::Logging",
+            "id": "CompanyA::Logging::Logger",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [
+                "private int logLevel",
+                "private MyCompany::Utils* internalUtils"
+            ],
+            "methods": [
+                "Logger(int)",
+                "setLevel(int): void",
+                "log(std::string&): void",
+                "configureFromUtils(MyCompany::Utils*): void"
+            ],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "CompanyB::UI",
+            "id": "CompanyB::UI::Button",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [
+                "private std::string label"
+            ],
+            "methods": [
+                "Button(std::string&)",
+                "draw(): void",
+                "click(): void"
+            ],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "CompanyB::UI",
+            "id": "CompanyB::UI::Widget",
+            "type": "class",
+            "isAbstract": true,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [
+                "protected int x",
+                "protected CompanyA::Logging::Logger widgetLogger"
+            ],
+            "methods": [
+                "~Widget()",
+                "draw(): void",
+                "setPosition(int, int): void"
+            ],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "Integration",
+            "id": "Integration::TestRunner",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [
+                "private MyCompany::Core::ExampleClass<int> testSubject",
+                "private CompanyA::Logging::Logger mainLogger",
+                "private std::vector<CompanyB::UI::Widget*> widgets"
+            ],
+            "methods": [
+                "TestRunner()",
+                "~TestRunner()",
+                "setupWidgets(): void",
+                "runAllTests(): void",
+                "logWidgetInteractions(CompanyB::UI::Button*): void"
+            ],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "MyCompany::Core",
+            "id": "MyCompany::Core::Base",
+            "type": "class",
+            "isAbstract": true,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [
+                "public int baseId"
+            ],
+            "methods": [
+                "initialize(): void"
+            ],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "MyCompany::Core",
+            "id": "MyCompany::Core::ExampleClass<T>",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": true,
+            "isStatic": false,
+            "attributes": [
+                "private static int MAX_COUNT",
+                "private T* data",
+                "protected std::string name"
+            ],
+            "methods": [
+                "ExampleClass()",
+                "~ExampleClass()",
+                "setName(std::string&): void",
+                "getName(): std::string",
+                "getData(): T*"
+            ],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "MyCompany::Core",
+            "id": "MyCompany::Core::SuperBase",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [
+                "SuperBase()"
+            ],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "MyCompany",
+            "id": "MyCompany::Utils",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [
+                "protected int utilsVersion"
+            ],
+            "methods": [
+                "log(char*): void"
+            ],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "pairstd",
+            "id": "pairstd::string, T",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "templates",
+            "id": "templates::ComplexContainer<T, U>",
+            "type": "class",
+            "isAbstract": true,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [
+                "private std::map<std::string, std::vector<T>> dataMap",
+                "private std::shared_ptr<U> sharedInstance",
+                "private int counter",
+                "private static int MAX_SIZE",
+                "public std::vector<std::pair<std::string, T>> result",
+                "public return result",
+                "public std::map<std::string, V> result",
+                "public return result"
+            ],
+            "methods": [
+                "ComplexContainer(std::vector<T>&, std::shared_ptr<U>)",
+                "convertData(std::vector<V>&): std::map<std::string, V>",
+                "update(T): void",
+                "~ComplexContainer()"
+            ],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "templates",
+            "id": "templates::StringIntContainer",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [
+                "private bool isModified",
+                "public isModifie d"
+            ],
+            "methods": [
+                "StringIntContainer(std::vector<std::string>&, std::shared_ptr<int>)",
+                "update(std::string): void"
+            ],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "templates",
+            "id": "templates::int>",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "templates",
+            "id": "templates::isModifie",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        },
+        {
+            "package": "templates",
+            "id": "templates::vectorT",
+            "type": "class",
+            "isAbstract": false,
+            "isFinal": false,
+            "isStatic": false,
+            "attributes": [],
+            "methods": [],
+            "linesOfCode": null,
+            "complexity": null,
+            "module": null
+        }
+    ],
+    "links": [
+        {
+            "source": "CompanyA::Logging::Logger",
+            "target": "MyCompany::Utils",
+            "relation": "depended"
+        },
+        {
+            "source": "CompanyB::UI::Button",
+            "target": "CompanyB::UI::Widget",
+            "relation": "extended"
+        },
+        {
+            "source": "CompanyB::UI::Widget",
+            "target": "CompanyA::Logging::Logger",
+            "relation": "depended"
+        },
+        {
+            "source": "Integration::TestRunner",
+            "target": "CompanyA::Logging::Logger",
+            "relation": "depended"
+        },
+        {
+            "source": "Integration::TestRunner",
+            "target": "CompanyB::UI::Button",
+            "relation": "depended"
+        },
+        {
+            "source": "Integration::TestRunner",
+            "target": "CompanyB::UI::Widget",
+            "relation": "depended"
+        },
+        {
+            "source": "Integration::TestRunner",
+            "target": "MyCompany::Core::ExampleClass<T>",
+            "relation": "depended"
+        },
+        {
+            "source": "MyCompany::Core::Base",
+            "target": "MyCompany::Core::SuperBase",
+            "relation": "extended"
+        },
+        {
+            "source": "MyCompany::Core::ExampleClass<T>",
+            "target": "MyCompany::Core::Base",
+            "relation": "extended"
+        },
+        {
+            "source": "MyCompany::Core::ExampleClass<T>",
+            "target": "MyCompany::Utils",
+            "relation": "extended"
+        },
+        {
+            "source": "templates::ComplexContainer<T, U>",
+            "target": "pairstd::string, T",
+            "relation": "depended"
+        },
+        {
+            "source": "templates::ComplexContainer<T, U>",
+            "target": "templates::vectorT",
+            "relation": "depended"
+        },
+        {
+            "source": "templates::StringIntContainer",
+            "target": "templates::int>",
+            "relation": "extended"
+        },
+        {
+            "source": "templates::StringIntContainer",
+            "target": "templates::isModifie",
+            "relation": "depended"
+        }
+    ],
+    "analysisSourcePath": "/home/mhh/Projects/KudSight/app/tests/test_files/cpp"
+}

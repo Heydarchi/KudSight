@@ -25,15 +25,19 @@ class FileAnalyzer(AbstractAnalyzer):
 
         listOfClassNodes = []
         analyzed_languages = set()
+        # Temporary map to help determine language context later
+        language_map = {}
 
         for filePath in listOfFiles:
             language = self.detectLang(filePath)
             if language != FileTypeEnum.UNDEFINED:
                 print(f"- Analyzing: {filePath} {language}")
                 analyzed_languages.add(language)
+                language_map[filePath] = language  # Store language per file
                 classAnalyzer = self.get_class_analyzer(language)
                 if classAnalyzer:
                     try:
+                        # Pass language context if needed by analyzer (e.g., for package name)
                         listOfClasses = classAnalyzer.analyze(filePath, language)
                         listOfClassNodes.extend(listOfClasses)
                     except Exception as e:
@@ -41,29 +45,51 @@ class FileAnalyzer(AbstractAnalyzer):
             else:
                 print(f"- Skipping unsupported file: {filePath}")
 
+        # --- Deduplicate listOfClassNodes ---
+        unique_class_nodes = {}
+        # Determine primary language for qualification *before* deduplication loop
+        primary_language = FileTypeEnum.JAVA  # Default or determine more intelligently
+        if analyzed_languages:
+            # Simple heuristic: pick the first one found, or prioritize Java/C++ etc.
+            primary_language = list(analyzed_languages)[0]
+        temp_data_gen = DataGenerator()  # Need instance for _get_qualified_name
+        temp_data_gen._language_context = primary_language  # Set context
+
+        for node in listOfClassNodes:
+            qualified_name = temp_data_gen._get_qualified_name(node)
+            if qualified_name not in unique_class_nodes:
+                unique_class_nodes[qualified_name] = node
+
+        deduplicated_list = list(unique_class_nodes.values())
+        print(
+            f"Total classes found: {len(listOfClassNodes)}, Unique classes: {len(deduplicated_list)}"
+        )
+        # --- End Deduplication ---
+
         # Generate base filename
         sanitized_path_prefix = DataGenerator()._sanitize_path_for_filename(targetPath)
         date_time = datetime.now().strftime("%m-%d-%Y_%H-%M-%S")
         base_filename = f"{sanitized_path_prefix}_{date_time}"
 
-        if listOfClassNodes:
-            primary_language = (
-                list(analyzed_languages)[0]
-                if len(analyzed_languages) == 1
-                else FileTypeEnum.CPP
-            )
+        # Use the deduplicated list from now on
+        if deduplicated_list:
+            # Use the previously determined primary_language
             print(
                 f"Generating consolidated UML for language context: {primary_language.name}"
             )
             try:
+                # Pass the primary language context to the drawer
                 umlDrawer = ClassUmlDrawer(primary_language)
-                umlDrawer.draw_multiple_uml(listOfClassNodes, base_filename)
+                umlDrawer.draw_multiple_uml(deduplicated_list, base_filename)
             except Exception as e:
                 print(f"ERROR generating consolidated UML: {e}")
         else:
             print("No classes found to generate consolidated UML.")
 
-        self.generateData(listOfClassNodes, targetPath, base_filename)
+        # Pass the deduplicated list to generateData
+        self.generateData(
+            deduplicated_list, targetPath, base_filename, primary_language
+        )
 
     def get_class_analyzer(self, language):
         if language == FileTypeEnum.JAVA:
@@ -76,9 +102,14 @@ class FileAnalyzer(AbstractAnalyzer):
             return CSharpClassAnalyzer()
         return None
 
-    def generateData(self, listOfClassNodes, targetPath, base_filename):
+    # Update generateData signature to accept primary_language
+    def generateData(
+        self, deduplicated_list, targetPath, base_filename, primary_language
+    ):
         dataGenerator = DataGenerator()
-        dataGenerator.generateData(listOfClassNodes, targetPath, base_filename)
+        # Explicitly set the language context in the DataGenerator instance
+        dataGenerator._language_context = primary_language
+        dataGenerator.generateData(deduplicated_list, targetPath, base_filename)
 
     def detectLang(self, fileName):
         if fileName.endswith(".java"):

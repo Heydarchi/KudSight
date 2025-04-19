@@ -174,58 +174,88 @@ class CppClassAnalyzer(AbstractAnalyzer):
         self,
         methods: List[MethodNode],
         variables: List[VariableNode],
-        params,
+        class_params: List[str],
         existing_relations: List[Inheritance],
     ):
         inheritance_list = list()
         cleaner = self._get_type_cleaner()
         existing_relation_names = {cleaner(rel.name) for rel in existing_relations}
+        template_params_to_ignore = set(class_params)
+
+        known_containers = {
+            "vector",
+            "list",
+            "map",
+            "set",
+            "deque",
+            "pair",
+            "tuple",
+            "shared_ptr",
+            "unique_ptr",
+            "weak_ptr",
+        }
+
+        def add_dependency_recursive(type_name: str):
+            if not type_name:
+                return
+
+            temp_cleaner_keep_templates = self._get_type_cleaner(strip_templates=False)
+            cleaned_full_type = temp_cleaner_keep_templates(type_name)
+
+            container_match = re.match(
+                r"([a-zA-Z_][a-zA-Z0-9_:]+)\s*<(.+)>", cleaned_full_type
+            )
+            if container_match:
+                container_name = container_match.group(1)
+                inner_types_str = container_match.group(2)
+
+                if container_name in known_containers or self._is_primitive_or_common(
+                    container_name
+                ):
+                    level = 0
+                    current_inner = ""
+                    inner_types = []
+                    for char in inner_types_str:
+                        if char == "<":
+                            level += 1
+                        elif char == ">":
+                            level -= 1
+                        elif char == "," and level == 0:
+                            inner_types.append(current_inner.strip())
+                            current_inner = ""
+                        else:
+                            current_inner += char
+                    inner_types.append(current_inner.strip())
+
+                    for inner_type in inner_types:
+                        add_dependency_recursive(inner_type)
+                    return
+
+            cleaned_base_type = cleaner(type_name)
+
+            if (
+                cleaned_base_type
+                and cleaned_base_type not in existing_relation_names
+                and not self._is_primitive_or_common(cleaned_base_type)
+                and cleaned_base_type not in template_params_to_ignore
+            ):
+                inheritance_list.append(
+                    Inheritance(
+                        name=cleaned_base_type,
+                        relationship=InheritanceEnum.DEPENDED,
+                    )
+                )
+                existing_relation_names.add(cleaned_base_type)
 
         for method in methods:
             if method.dataType:
-                cleaned_return_type = cleaner(method.dataType)
-                if (
-                    cleaned_return_type
-                    and cleaned_return_type not in existing_relation_names
-                    and not self._is_primitive_or_common(cleaned_return_type)
-                ):
-                    inheritance_list.append(
-                        Inheritance(
-                            name=cleaned_return_type,
-                            relationship=InheritanceEnum.DEPENDED,
-                        )
-                    )
-                    existing_relation_names.add(cleaned_return_type)
-
+                add_dependency_recursive(method.dataType)
             for param_type in method.params:
-                cleaned_param_type = cleaner(param_type)
-                if (
-                    cleaned_param_type
-                    and cleaned_param_type not in existing_relation_names
-                    and not self._is_primitive_or_common(cleaned_param_type)
-                ):
-                    inheritance_list.append(
-                        Inheritance(
-                            name=cleaned_param_type,
-                            relationship=InheritanceEnum.DEPENDED,
-                        )
-                    )
-                    existing_relation_names.add(cleaned_param_type)
+                add_dependency_recursive(param_type)
 
         for variable in variables:
             if variable.dataType:
-                cleaned_var_type = cleaner(variable.dataType)
-                if (
-                    cleaned_var_type
-                    and cleaned_var_type not in existing_relation_names
-                    and not self._is_primitive_or_common(cleaned_var_type)
-                ):
-                    inheritance_list.append(
-                        Inheritance(
-                            name=cleaned_var_type, relationship=InheritanceEnum.DEPENDED
-                        )
-                    )
-                    existing_relation_names.add(cleaned_var_type)
+                add_dependency_recursive(variable.dataType)
 
         return inheritance_list
 
@@ -274,7 +304,7 @@ class CppClassAnalyzer(AbstractAnalyzer):
             "any",
         }
 
-    def _get_type_cleaner(self):
+    def _get_type_cleaner(self, strip_templates=True):
         modifiers = {
             "const",
             "volatile",
@@ -288,30 +318,26 @@ class CppClassAnalyzer(AbstractAnalyzer):
             "struct",
             "class",
         }
-        postfixes = {"*", "&", "&&"}
         namespaces_to_strip_prefix = {"std::"}
 
         def clean_type(name: str) -> str:
             if not isinstance(name, str):
                 return ""
-            name = re.sub(r"<.*?>", "", name)
+            name = name.replace("*", " ").replace("&", " ").strip()
+            if strip_templates:
+                name = re.sub(r"<.*?>", "", name)
             name = re.sub(r"\s*=[^,]+", "", name)
             name = re.sub(r"\[.*?\]", "", name)
-            for post in postfixes:
-                name = name.replace(post, " ")
 
             parts = name.split()
             core_parts = [p for p in parts if p and p not in modifiers]
-
             if not core_parts:
                 return ""
-
             cleaned_name = " ".join(core_parts)
 
             for ns_prefix in namespaces_to_strip_prefix:
                 if cleaned_name.startswith(ns_prefix):
                     cleaned_name = cleaned_name[len(ns_prefix) :]
-
             if cleaned_name.startswith("::"):
                 cleaned_name = cleaned_name[2:]
 
@@ -321,9 +347,12 @@ class CppClassAnalyzer(AbstractAnalyzer):
 
     def _is_primitive_or_common(self, cleaned_name: str) -> bool:
         primitives = self._get_cpp_primitives_and_common()
-        if cleaned_name in primitives:
+        core_type = cleaned_name
+        if core_type in primitives:
             return True
-        return any(part in primitives for part in cleaned_name.split())
+        if len(core_type) == 1 and "A" <= core_type <= "Z":
+            return True
+        return False
 
     def extract_class_params(self, inputStr):
         return CppMethodAnalyzer().extractParams(inputStr)

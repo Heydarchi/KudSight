@@ -1,0 +1,111 @@
+@startuml
+' Consolidated UML Diagram
+hide empty members
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+package "CompanyA.Logging" {
+class "CompanyA::Logging::Logger"  {
+-  "MyCompany::Utils*" internalUtils
+-  "int" logLevel
++  Logger("int")
++  configureFromUtils("MyCompany::Utils*")
++  log("string&")
++  setLevel("int")
+}
+}
+
+package "CompanyB.UI" {
+class "CompanyB::UI::Button"  {
+-  "string" label
++  Button("string&")
++  click()
++  draw()
+}
+class "CompanyB::UI::Widget" << abstract >> {
+#  "CompanyA::Logging::Logger" widgetLogger
+#  "int" x
++ { abstract } draw()
++  setPosition("int", "int")
++  ~Widget()
+}
+}
+
+package "Integration" {
+class "Integration::TestRunner"  {
+-  "CompanyA::Logging::Logger" mainLogger
+-  "MyCompany::Core::ExampleClass<int>" testSubject
+-  "vector<CompanyB::UI::Widget*>" widgets
++  TestRunner()
++  logWidgetInteractions("CompanyB::UI::Button*")
++  runAllTests()
++  setupWidgets()
++  ~TestRunner()
+}
+}
+
+package "MyCompany" {
+class "MyCompany::Utils"  {
+#  "int" utilsVersion
+#  log("char*")
+}
+}
+
+package "MyCompany.Core" {
+class "MyCompany::Core::Base" << abstract >> {
++  "int" baseId
++ { abstract } initialize()
+}
+class "MyCompany::Core::ExampleClass<T>" << final >> {
+- {static} "int" MAX_COUNT
+-  "T*" data
+#  "string" name
++  ExampleClass()
++  getData(): "T*"
++  getName(): "string"
++  setName("string&")
++  ~ExampleClass()
+}
+class "MyCompany::Core::SuperBase"  {
++  SuperBase()
+}
+}
+
+package "templates" {
+class "templates::ComplexContainer<T, U>" << abstract >> {
+- {static} "int" MAX_SIZE
+-  "int" counter
+-  "map<std::string, std::vector<T>>" dataMap
++  "vector<std::pair<std::string, T>>" result
++  "return" result
++  "map<std::string, V>" result
++  "return" result
+-  "shared_ptr<U>" sharedInstance
++  ComplexContainer("vector<T>&", "shared_ptr<U>")
++  convertData("vector<V>&"): "map<std::string, V>"
++ { abstract } update(T)
++  ~ComplexContainer()
+}
+class "templates::StringIntContainer"  {
++  isModifie d
+-  "bool" isModified
++  StringIntContainer("vector<std::string>&", "shared_ptr<int>")
++  update("string")
+}
+}
+
+' Relationships
+"CompanyA::Logging::Logger" ..> "MyCompany::Utils"
+"CompanyB::UI::Button" --|> "CompanyB::UI::Widget"
+"CompanyB::UI::Widget" ..> "CompanyA::Logging::Logger"
+"Integration::TestRunner" ..> "CompanyA::Logging::Logger"
+"Integration::TestRunner" ..> "CompanyB::UI::Button"
+"Integration::TestRunner" ..> "CompanyB::UI::Widget"
+"Integration::TestRunner" ..> "MyCompany::Core::ExampleClass<T>"
+"MyCompany::Core::Base" --|> "MyCompany::Core::SuperBase"
+"MyCompany::Core::ExampleClass<T>" --|> "MyCompany::Core::Base"
+"MyCompany::Core::ExampleClass<T>" --|> "MyCompany::Utils"
+"templates::ComplexContainer<T, U>" ..> "pairstd::string, T"
+"templates::ComplexContainer<T, U>" ..> "templates::vectorT"
+"templates::StringIntContainer" --|> "templates::int>"
+"templates::StringIntContainer" ..> "templates::isModifie"
+@enduml

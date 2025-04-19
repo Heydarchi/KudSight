@@ -19,7 +19,7 @@ class CSharpMethodAnalyzer(AbstractAnalyzer):
         )
 
     def analyze(self, filePath, lang=None, classStr=None):
-        content = classStr if classStr else FileReader().readFile(filePath)
+        content = classStr if classStr else FileReader().read_file(filePath)
         methods = []
         match = re.search(self.pattern, content)
         while match:

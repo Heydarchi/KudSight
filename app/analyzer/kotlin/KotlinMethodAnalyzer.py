@@ -13,7 +13,7 @@ class KotlinMethodAnalyzer(AbstractAnalyzer):
         self.pattern = r"\bfun\s+([a-zA-Z_]\w*)\s*\(.*?\)\s*(:\s*[\w<>\[\]?]+)?\s*[{;]"
 
     def analyze(self, filePath, lang=None, classStr=None):
-        content = classStr if classStr else FileReader().readFile(filePath)
+        content = classStr if classStr else FileReader().read_file(filePath)
         methods = []
         match = re.search(self.pattern, content)
         while match:
