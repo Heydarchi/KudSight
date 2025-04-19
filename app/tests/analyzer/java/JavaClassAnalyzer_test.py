@@ -36,12 +36,16 @@ class TestJavaClassAnalyzer(unittest.TestCase):
     def test_find_class_pattern_java_with_inheritance_and_comments(self):
         # Check if the class pattern is found correctly in a Java input string with inheritance and comments
         classAnalyzer = JavaClassAnalyzer()
-        inputStr = "/* This is a comment */ public class TestClass extends AbstractTestClass2 implements SuperTestClass{"
+        inputStr = """/* This is a comment */
+        public class TestClass extends AbstractTestClass2 implements SuperTestClass{"""
         for pattern in classAnalyzer.pattern:
             match = classAnalyzer.find_class_pattern(pattern, inputStr)
+
+            # Update the expected match to include the full match with comment and whitespace
             self.assertEqual(
                 inputStr[match.start() : match.end()],
-                " This is a comment */ public class TestClass extends AbstractTestClass2 implements SuperTestClass{",
+                """/* This is a comment */
+        public class TestClass extends AbstractTestClass2 implements SuperTestClass{""",
             )
 
     def test_extract_class_name_java(self):
