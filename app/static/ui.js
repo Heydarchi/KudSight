@@ -76,7 +76,17 @@ function setViewMode(mode) {
     umlImageContainer.classList.add('hidden');
     // If graph data exists, ensure it's rendered
     if (originalGraphData) {
-        Graph.graphData(Graph.graphData()); // Re-trigger rendering if needed
+        // Update graph with current theme colors after switching views
+        const isDarkTheme = document.documentElement.classList.contains('dark');
+        const colors = getNodeColorScheme(isDarkTheme);
+        
+        if (Graph) {
+          Graph
+            .linkColor(colors.linkColor)
+            .linkDirectionalArrowColor(colors.arrowColor)
+            .backgroundColor(colors.bgColor)
+            .graphData(Graph.graphData()); // Re-trigger rendering with current data
+        }
     } else if (currentGraphFile) {
         loadContentForFile(currentGraphFile); // Load graph if file selected but no data yet
     }
@@ -365,6 +375,27 @@ document.addEventListener('DOMContentLoaded', () => {
   themeToggleBtn.addEventListener('click', () => {
     const newTheme = toggleTheme();
     updateUiForTheme(newTheme);
+    
+    // Update graph or UML view based on current mode
+    if (currentViewMode === '3d' && Graph) {
+      const isDark = newTheme === THEMES.DARK;
+      const colors = getNodeColorScheme(isDark);
+      
+      // Update graph colors
+      Graph
+        .linkColor(colors.linkColor)
+        .linkDirectionalArrowColor(colors.arrowColor)
+        .backgroundColor(colors.bgColor);
+      
+      if (originalGraphData) {
+        // Force a full refresh of the graph to update all node appearances
+        const currentData = Graph.graphData();
+        Graph.graphData({ nodes: [], links: [] }); // Clear
+        setTimeout(() => {
+          Graph.graphData(currentData); // Reload with same data to force full refresh
+        }, 10);
+      }
+    }
   });
 
   // --- Initial Load ---

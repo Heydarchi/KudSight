@@ -112,14 +112,17 @@
     </div>
     
     <!-- Content Area (Graph or Image) -->
-    <div id="content-area" class="flex-1 relative overflow-hidden bg-gray-50 dark:bg-gray-900">
+    <div id="content-area" class="flex-1 relative overflow-hidden bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       <!-- Graph Container (Initially visible) -->
       <div id="graph-container" class="absolute inset-0">
         <div id="3d-graph" class="w-full h-full"></div>
       </div>
       <!-- UML Image Container (Initially hidden) -->
-      <div id="uml-image-container" class="hidden absolute inset-0 overflow-auto text-center bg-gray-100 dark:bg-gray-800 p-5">
-        <img id="uml-image" src="" alt="UML Diagram" class="max-w-full h-auto inline-block" />
+      <div id="uml-image-container" class="hidden absolute inset-0 overflow-auto text-center bg-gray-100 dark:bg-gray-800 p-5 transition-colors duration-200">
+        <!-- Add a themed container for the UML image -->
+        <div class="inline-block bg-white dark:bg-gray-900 p-4 rounded-lg shadow-lg max-w-full">
+          <img id="uml-image" src="" alt="UML Diagram" class="max-w-full h-auto" />
+        </div>
       </div>
     </div>
 

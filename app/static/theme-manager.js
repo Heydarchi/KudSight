@@ -57,27 +57,68 @@ export function initTheme() {
 // Update node appearance based on current theme (for 3D graph)
 export function getNodeColorScheme(isDarkTheme = true) {
   return {
-    background: isDarkTheme ? '#ffffff' : '#ffffff', // White background in both themes
-    stroke: isDarkTheme ? '#000000' : '#000000',     // Black stroke in both themes
-    title: isDarkTheme ? '#000000' : '#000000',      // Black title in both themes
-    attribute: isDarkTheme ? '#007bff' : '#0056b3',  // Blue attributes (darker in light mode)
-    method: isDarkTheme ? '#e44c1a' : '#c13a10'      // Orange methods (darker in light mode)
+    // White background for nodes in both themes, but with different border colors
+    background: '#ffffff',
+    
+    // Use darker border in light mode for contrast
+    stroke: isDarkTheme ? '#000000' : '#333333',
+    
+    // Text color for the title is black in both themes
+    title: '#000000',
+    
+    // Attribute color is blue (darker blue in light mode for better contrast)
+    attribute: isDarkTheme ? '#007bff' : '#0056b3',
+    
+    // Method color is orange/red (darker in light mode for contrast)
+    method: isDarkTheme ? '#e44c1a' : '#c13a10',
+    
+    // Link/arrow colors - much darker in light mode for visibility
+    linkColor: isDarkTheme ? '#ffffff' : '#333333',    // White in dark mode, darker gray in light mode
+    arrowColor: isDarkTheme ? '#ffffff' : '#333333',   // White in dark mode, darker gray in light mode
+    
+    // Graph background color - use a slightly darker background in light mode for better contrast
+    bgColor: isDarkTheme ? '#111827' : '#f0f0f0',      // Dark blue in dark mode, light gray in light mode
+    
+    // 3D Node size (slightly larger in dark mode)
+    nodeSize: isDarkTheme ? 40 : 38,
+    
+    // Node shadow for better visibility against background
+    shadowColor: isDarkTheme ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.2)',
+    shadowBlur: isDarkTheme ? 10 : 15
   };
 }
 
 // Update UI elements based on theme
 export function updateUiForTheme(theme) {
-  // This function could be expanded to handle other theme-dependent UI elements
   const isDark = theme === THEMES.DARK;
   
-  // Update form elements styling if needed
-  document.querySelectorAll('.form-radio').forEach(radio => {
-    radio.style.accentColor = isDark ? '#4f46e5' : '#6366f1';
-  });
-  
-  // Update graph node colors if the graph is initialized
+  // Update graph background and visualization
+  updateGraphColors(isDark);
+}
+
+// Update graph colors based on theme
+function updateGraphColors(isDark) {
   if (window.Graph) {
-    // Implementation would depend on how the graph is initialized
-    console.log(`Theme changed to ${theme}, graph should update if visible`);
+    try {
+      // Update graph background color
+      const graphElement = document.getElementById('3d-graph');
+      if (graphElement) {
+        const colors = getNodeColorScheme(isDark);
+        
+        // Update graph link and arrow colors
+        window.Graph
+          .linkColor(colors.linkColor)
+          .linkDirectionalArrowColor(colors.arrowColor)
+          .backgroundColor(colors.bgColor);
+        
+        // If there's a scene, update the background
+        const scene = window.Graph.scene();
+        if (scene) {
+          scene.background = new THREE.Color(colors.bgColor);
+        }
+      }
+    } catch (e) {
+      console.error('Error updating graph colors:', e);
+    }
   }
 }

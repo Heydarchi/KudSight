@@ -9,6 +9,7 @@ body {
 #3d-graph {
   width: 100%;
   height: 100%;
+  transition: background-color 0.3s ease;
 }
 
 /* Keep hidden class for JS toggling */
@@ -68,4 +69,79 @@ canvas {
 /* Theme toggle icons transition */
 .theme-light-icon, .theme-dark-icon {
   transition: opacity 0.3s ease;
+}
+
+/* Add styles for the graph tooltips */
+
+/* Tooltip styling for graph nodes and links */
+.graph-tooltip {
+  padding: 8px;
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  pointer-events: none;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Light theme tooltips - Use darker background for better contrast */
+:root .graph-tooltip {
+  background-color: rgba(255, 255, 255, 0.95); /* Higher opacity for better contrast */
+  color: #111;
+  border: 1px solid #666;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  font-weight: 500;
+}
+
+/* Dark theme tooltips - Improve visibility */
+.dark .graph-tooltip {
+  background-color: rgba(31, 41, 55, 0.95); /* Higher opacity */
+  color: white;
+  border: 1px solid #4b5563;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* 3D graph specific adjustments */
+:root .scene-tooltip {
+  background-color: rgba(255, 255, 255, 0.95); 
+  color: #111;
+  border: 2px solid #555;
+  font-weight: 500;
+}
+
+.dark .scene-tooltip {
+  background-color: rgba(31, 41, 55, 0.95);
+  color: white;
+  border: 2px solid #4b5563;
+}
+
+/* Content area adjustments for light mode */
+:root #content-area {
+  background-color: #f0f0f0; /* Slightly darker than default light gray for better contrast */
+}
+
+.dark #content-area {
+  background-color: #111827; /* Keep the dark blue for dark mode */
+}
+
+/* UML image container transition */
+#uml-image-container {
+  transition: background-color 0.3s ease;
+}
+
+/* Ensure UML diagrams have good contrast in both themes */
+#uml-image {
+  transition: filter 0.3s ease;
+  /* Add slight border to help with contrast between diagram and background */
+  border: 1px solid #ccc;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.dark #uml-image {
+  border-color: #4b5563;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Only invert UML diagrams if needed - use class when appropriate */
+.dark #uml-image.invert-in-dark {
+  filter: invert(0.85) hue-rotate(180deg);
 }
