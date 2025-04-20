@@ -83,10 +83,18 @@ class CppClassAnalyzer(AbstractAnalyzer):
 
                 template_match = re.search(self.templateParamPattern, class_header)
                 if template_match:
-                    params_str = template_match.group(1)
-                    classInfo.params = [
-                        p.split()[-1] for p in params_str.split(",") if p.strip()
-                    ]
+                    classInfo.hasTemplate = True
+                    template_str = template_match.group(0)
+                    template_params = self.extract_template_params(template_str)
+                    
+                    classInfo.params = []
+                    classInfo.templateParams = template_params
+                    for param in template_params:
+                        parts = param.split()
+                        if parts:
+                            param_name = parts[-1].strip()
+                            param_name = re.sub(r"=.*", "", param_name).strip()
+                            classInfo.params.append(param_name)
 
                 classInfo.relations = self.extract_class_inheritances(class_header)
 
@@ -117,6 +125,19 @@ class CppClassAnalyzer(AbstractAnalyzer):
                 current_search_pos = abs_match_start + classBoundary
 
         return listOfClasses
+
+    def extract_template_params(self, template_str):
+        """
+        Extracts template parameters from a template declaration string.
+        """
+        analyzer_helper = AnalyzerHelper()
+        start = template_str.find("<")
+        end = template_str.rfind(">")
+        if start < 0 or end < 0 or start >= end:
+            return []
+            
+        params_str = template_str[start+1:end].strip()
+        return analyzer_helper.parse_template_params(params_str)
 
     def find_class_pattern(self, pattern, inputStr):
         match = re.search(pattern, inputStr)
@@ -180,7 +201,18 @@ class CppClassAnalyzer(AbstractAnalyzer):
         inheritance_list = list()
         cleaner = self._get_type_cleaner()
         existing_relation_names = {cleaner(rel.name) for rel in existing_relations}
-        template_params_to_ignore = set(class_params)
+        
+        all_template_params = set(class_params)
+        for method in methods:
+            if method.hasTemplate and method.templateParams:
+                for param in method.templateParams:
+                    parts = param.split()
+                    if parts:
+                        param_name = parts[-1].strip()
+                        param_name = re.sub(r"=.*", "", param_name).strip()
+                        all_template_params.add(param_name)
+        
+        template_params_to_ignore = all_template_params
 
         known_containers = {
             "vector",
@@ -199,6 +231,18 @@ class CppClassAnalyzer(AbstractAnalyzer):
             if not type_name:
                 return
 
+            # Sanitize type name before processing to avoid malformed types
+            # Fix template-related syntax that could cause issues
+            if '>' in type_name and '<' not in type_name:
+                # Malformed template syntax
+                return
+            if type_name.endswith('>'):
+                # Check for potentially malformed template types like "templates::T>"
+                # that were incorrectly extracted
+                parts = type_name.split('::')
+                if len(parts) > 1 and '>' in parts[-1] and '<' not in parts[-1]:
+                    return
+
             temp_cleaner_keep_templates = self._get_type_cleaner(strip_templates=False)
             cleaned_full_type = temp_cleaner_keep_templates(type_name)
 
@@ -209,26 +253,41 @@ class CppClassAnalyzer(AbstractAnalyzer):
                 container_name = container_match.group(1)
                 inner_types_str = container_match.group(2)
 
-                if container_name in known_containers or self._is_primitive_or_common(
-                    container_name
-                ):
+                base_container = container_name.split("::")[-1] if "::" in container_name else container_name
+                if base_container in known_containers or self._is_primitive_or_common(container_name):
+                    inner_types = []
                     level = 0
                     current_inner = ""
-                    inner_types = []
                     for char in inner_types_str:
                         if char == "<":
                             level += 1
+                            current_inner += char
                         elif char == ">":
                             level -= 1
+                            current_inner += char
                         elif char == "," and level == 0:
                             inner_types.append(current_inner.strip())
                             current_inner = ""
                         else:
                             current_inner += char
-                    inner_types.append(current_inner.strip())
+                    if current_inner:
+                        inner_types.append(current_inner.strip())
 
                     for inner_type in inner_types:
                         add_dependency_recursive(inner_type)
+                    
+                    cleaned_container_type = cleaner(container_name)
+                    if (cleaned_container_type and 
+                        cleaned_container_type not in existing_relation_names and
+                        not self._is_primitive_or_common(cleaned_container_type) and
+                        cleaned_container_type not in template_params_to_ignore):
+                        inheritance_list.append(
+                            Inheritance(
+                                name=cleaned_container_type,
+                                relationship=InheritanceEnum.DEPENDED,
+                            )
+                        )
+                        existing_relation_names.add(cleaned_container_type)
                     return
 
             cleaned_base_type = cleaner(type_name)
@@ -254,7 +313,9 @@ class CppClassAnalyzer(AbstractAnalyzer):
                 add_dependency_recursive(param_type)
 
         for variable in variables:
-            if variable.dataType:
+            if variable.targetType:
+                add_dependency_recursive(variable.targetType)
+            elif variable.dataType:
                 add_dependency_recursive(variable.dataType)
 
         return inheritance_list

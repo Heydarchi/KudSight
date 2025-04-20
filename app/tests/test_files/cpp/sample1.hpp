@@ -7,11 +7,11 @@
 
 class MyCompany::CoreSuperBase {
 public:
-    SuperBase(){}
+    CoreSuperBase(){}
 };
 
 // Base class
-class Base: public SuperBase {
+class Base: public CoreSuperBase {
 public:
     virtual void initialize() = 0;
     int baseId;

@@ -114,10 +114,63 @@ class CppMethodAnalyzer(AbstractAnalyzer):
                 seen_methods.add(method_tuple)
 
         return unique_methods
+    
+    def extract_template_params(self, inputString):
+        """
+        Extracts template parameters from a template declaration string.
+        E.g., from "template <typename T, int N>" extracts ["typename T", "int N"]
+        """
+        start = inputString.find("<")
+        end = inputString.rfind(">")
+
+        if start == -1 or end == -1 or start >= end:
+            return []
+
+        params_str = inputString[start + 1 : end].strip()
+        if not params_str:
+            return []
+
+        paramList = []
+        level = 0
+        current_param = ""
+        for char in params_str:
+            if char == "<":
+                level += 1
+                current_param += char
+            elif char == ">":
+                level -= 1
+                current_param += char
+            elif char == "," and level == 0:
+                paramList.append(current_param.strip())
+                current_param = ""
+            else:
+                current_param += char
+
+        # Add the last parameter
+        if current_param.strip():
+            paramList.append(current_param.strip())
+
+        # Further cleanup (optional, depending on desired format)
+        # e.g., remove default values if needed
+        cleaned_params = []
+        for param in paramList:
+            # Simple cleanup: remove default initializers for this example
+            cleaned_param = re.sub(r"\s*=.*", "", param).strip()
+            if cleaned_param:
+                cleaned_params.append(cleaned_param)
+
+        return cleaned_params
 
     def extractMethodInfo(self, inputString, match, current_access):
         methodInfo = MethodNode()
         methodInfo.accessLevel = current_access
+
+        # Look for template declaration
+        template_match = re.search(r"template\s*<([^>]+)>", inputString)
+        if template_match:
+            methodInfo.hasTemplate = True
+            params = self.extract_template_params(template_match.group(0))
+            methodInfo.templateParams = params
 
         return_type_or_ctor_dtor = match.group(1).strip() if match.group(1) else ""
         method_name = match.group(3).strip() if match.group(3) else ""
@@ -125,6 +178,10 @@ class CppMethodAnalyzer(AbstractAnalyzer):
         is_const_method = match.group(5) == "const"
         pure_virtual_specifier = match.group(6).strip() if match.group(6) else ""
         is_abstract = pure_virtual_specifier == "= 0"
+
+        # Skip malformed or auto-generated method artifacts
+        if method_name in ['result', 'return'] or ' ' in method_name:
+            return None
 
         type_keywords_to_remove = {
             "virtual",
@@ -184,6 +241,8 @@ class CppMethodAnalyzer(AbstractAnalyzer):
             "public:",
             "private:",
             "protected:",
+            "result",
+            "return",
         }:
             return None
 

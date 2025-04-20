@@ -403,6 +403,12 @@ class ClassUmlDrawer:
         class_type = "interface" if classInfo.isInterface else "class"
         # Use BASE qualified name for the definition ID
         qualified_name = self._get_qualified_name(classInfo)
+        
+        # Handle template parameters in the class name
+        template_suffix = ""
+        if classInfo.hasTemplate and classInfo.params:
+            template_suffix = f"<{', '.join(classInfo.params)}>"
+        
         name_for_plantuml = self._quote_if_needed(qualified_name)  # Quote the BASE name
 
         stereotype_parts = []
@@ -413,10 +419,21 @@ class ClassUmlDrawer:
         stereotype = f"<< { ' '.join(stereotype_parts) } >>" if stereotype_parts else ""
         definition.append(f"{class_type} {name_for_plantuml} {stereotype} {{")
 
+        # For template classes, add template parameters to the class definition
+        if classInfo.hasTemplate and classInfo.templateParams:
+            template_note = "note top: Template parameters:\\n"
+            for param in classInfo.templateParams:
+                template_note += f"- {param}\\n"
+            definition.append(template_note)
+
         # Use the DISPLAY cleaner (keeps * &) for member types
         display_cleaner = self._get_type_cleaner()
 
         for var in sorted(classInfo.variables, key=lambda x: x.name):
+            # Skip variables with malformed names (like those with spaces which are parsing artifacts)
+            if ' ' in var.name or not var.name:
+                continue
+                
             access = self._get_access_symbol(var.accessLevel)
             static_marker = "{static}" if var.isStatic else ""
             var_type_display = self._quote_if_needed(display_cleaner(var.dataType))
@@ -425,6 +442,10 @@ class ClassUmlDrawer:
             )
 
         for method in sorted(classInfo.methods, key=lambda x: x.name):
+            # Skip methods with malformed names or auto-generated artifacts
+            if not method.name or ' ' in method.name or method.name in ['result', 'return']:
+                continue
+                
             access = self._get_access_symbol(method.accessLevel)
             stereotype_m_parts = []
             if method.isStatic:
@@ -483,6 +504,30 @@ class ClassUmlDrawer:
                 # relation.name is already the BASE type from CppClassAnalyzer
                 target_name_original_base = relation.name
                 if not target_name_original_base:
+                    continue
+                
+                # Handle malformed template names - these typically have unmatched angle brackets
+                # or consist only of template parameter names mistakenly extracted as types
+                if ">" in target_name_original_base and not "<" in target_name_original_base:
+                    continue  # Skip unbalanced template names
+                
+                # Skip single-letter template parameters that might have been incorrectly extracted
+                if len(target_name_original_base) == 1 and target_name_original_base.isupper():
+                    continue
+                
+                # Skip template parameters or malformed identifiers like "T>" or "isModifie" 
+                is_likely_template_param = (
+                    target_name_original_base.endswith(">") and 
+                    not "<" in target_name_original_base
+                ) or (
+                    target_name_original_base.split("::")[-1] in classInfo.params
+                )
+                
+                if is_likely_template_param:
+                    continue
+                
+                # Skip malformed identifiers that might be parsing artifacts
+                if " " in target_name_original_base or target_name_original_base == "isModifie":
                     continue
 
                 # Qualify the BASE target name
