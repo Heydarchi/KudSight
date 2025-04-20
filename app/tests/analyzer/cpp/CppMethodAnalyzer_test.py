@@ -272,89 +272,128 @@ class TestCppMethodAnalyzer(unittest.TestCase):
         # Print out information about all detected methods
         print("\nAnalyzing MethodFootprintsExtended.hpp:")
         print(f"Found {len(class_methods)} methods:")
-        
+
         for i, m in enumerate(class_methods):
             print(f"{i+1}. {m.name} ({m.dataType}) in {m.accessLevel}")
-        
+
         # Comprehensive list of all expected methods from the file
         expected_methods = [
             # Implemented methods (6)
-            "initialize", "compute", "getName", "isValid", "draw", "update",
-            
+            "initialize",
+            "compute",
+            "getName",
+            "isValid",
+            "draw",
+            "update",
             # Basic declarations (2)
-            "declaredOnlyMethod", "declaredWithParams",
-            
+            "declaredOnlyMethod",
+            "declaredWithParams",
             # Const and reference methods (2)
-            "declaredConstMethod", "fetchReadOnlyData",
-            
+            "declaredConstMethod",
+            "fetchReadOnlyData",
             # Static and noexcept (2)
-            "isFeatureEnabled", "computeEnergy",
-            
+            "isFeatureEnabled",
+            "computeEnergy",
             # Template methods (4)
-            "genericMethod", "mixTypes", "variadicDeclared", "logArg",
-            
+            "genericMethod",
+            "mixTypes",
+            "variadicDeclared",
+            "logArg",
             # Virtual and override (2)
-            "declaredVirtual", "mustOverrideLater",
-            
+            "declaredVirtual",
+            "mustOverrideLater",
             # Attributes and trailing return (1)
             "computeRisk",
-            
             # Reference qualifiers (2)
-            "rvalueDeclared", "lvalueDeclared",
-            
+            "rvalueDeclared",
+            "lvalueDeclared",
             # Operator overloads (1)
             "operator!=",
-            
             # Explicit this parameter (C++23)
             "declaredWithExplicitThis",
-            
             # Methods where name matches return type (13)
-            "Example_1", "Example_2", "Example_3", "CustomType", 
-            "vector", "tuple", "optional", "array", "function",
-            "unique_ptr", "shared_ptr", "TemplateType", "map", "pair",
-            
+            "Example_1",
+            "Example_2",
+            "Example_3",
+            "CustomType",
+            "vector",
+            "tuple",
+            "optional",
+            "array",
+            "function",
+            "unique_ptr",
+            "shared_ptr",
+            "TemplateType",
+            "map",
+            "pair",
             # Methods with trailing return types (2)
-            "Example_1_2", "TemplateType2"
+            "Example_1_2",
+            "TemplateType2",
         ]
-        
+
         # Check method categories
-        public_methods = [m for m in class_methods if m.accessLevel == AccessEnum.PUBLIC]
-        private_methods = [m for m in class_methods if m.accessLevel == AccessEnum.PRIVATE]
+        public_methods = [
+            m for m in class_methods if m.accessLevel == AccessEnum.PUBLIC
+        ]
+        private_methods = [
+            m for m in class_methods if m.accessLevel == AccessEnum.PRIVATE
+        ]
         const_methods = [m for m in class_methods if m.isConst]
         virtual_methods = [m for m in class_methods if m.isVirtual]
         template_methods = [m for m in class_methods if m.hasTemplate]
-        
+
         print(f"\nMethod statistics:")
         print(f"- Public methods: {len(public_methods)}")
         print(f"- Private methods: {len(private_methods)}")
         print(f"- Const-qualified: {len(const_methods)}")
         print(f"- Virtual: {len(virtual_methods)}")
         print(f"- Template: {len(template_methods)}")
-        
+
         # Check for missing expected methods
         method_names = [m.name for m in class_methods]
         missing_methods = [m for m in expected_methods if m not in method_names]
         for method_name in missing_methods:
             print(f"Missing expected method: {method_name}")
-        
+
         # Check for unexpected methods
-        unexpected_methods = [m for m in method_names if m not in expected_methods and m != "areEqual"]
+        unexpected_methods = [
+            m for m in method_names if m not in expected_methods and m != "areEqual"
+        ]
         for method_name in unexpected_methods:
             print(f"Unexpected method found: {method_name}")
-        
+
         # Method validation - ensure core methods are detected correctly
         core_methods = [
-            "initialize", "compute", "getName", "isValid", "draw", "update",
-            "declaredOnlyMethod", "declaredConstMethod", "fetchReadOnlyData", 
-            "computeRisk", "operator!="
+            "initialize",
+            "compute",
+            "getName",
+            "isValid",
+            "draw",
+            "update",
+            "declaredOnlyMethod",
+            "declaredConstMethod",
+            "fetchReadOnlyData",
+            "computeRisk",
+            "operator!=",
         ]
-        
+
         for method_name in core_methods:
-            self.assertIn(method_name, method_names, f"Missing core method: {method_name}")
-        
+            self.assertIn(
+                method_name, method_names, f"Missing core method: {method_name}"
+            )
+
         # Verify property counts
-        self.assertTrue(len(const_methods) >= 5, f"Expected at least 5 const methods, found {len(const_methods)}")
-        self.assertTrue(len(virtual_methods) >= 2, f"Expected at least 2 virtual methods, found {len(virtual_methods)}")
-        
+        self.assertTrue(
+            len(const_methods) >= 5,
+            f"Expected at least 5 const methods, found {len(const_methods)}",
+        )
+        self.assertTrue(
+            len(virtual_methods) >= 2,
+            f"Expected at least 2 virtual methods, found {len(virtual_methods)}",
+        )
+
         # Total methods should be at least 33 (39 actually found)
-        self.assertTrue(len(class_methods) >= 33, f"Expected at least 33 methods, found {len(class_methods)}")
+        self.assertTrue(
+            len(class_methods) >= 33,
+            f"Expected at least 33 methods, found {len(class_methods)}",
+        )
