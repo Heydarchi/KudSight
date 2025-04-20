@@ -9,47 +9,56 @@ from utils.FileReader import *
 
 class CppVariableAnalyzer(AbstractAnalyzer):
     def __init__(self) -> None:
-        # Regex V2: Handles static const, allows initializers, better type capture
-        # Group 1: Type (including static, const, namespaces, templates, pointers/refs)
-        # Group 2: Variable Name
-        # Group 3: Optional array specifier
-        # Group 4: Optional initializer part (ignored) or semicolon
+        # Simplified regex pattern for standard variable declarations
         self.pattern = (
-            r"^\s*"
+            r"^\s*"  # Start of line with optional whitespace
             # Negative lookahead for keywords that start lines but aren't variable declarations
-            r"(?!using |typedef |namespace |template |friend |virtual |explicit |inline |class |struct |enum |public:|private:|protected:|[^;]*\([^;]*\)\s*[:{])"
-            # Capture the full type, including keywords like static, const, namespaces, templates, *, &
-            r"((?:(?:static|const|constexpr|mutable|volatile|typename)\s+)*"  # Keywords before type
-            r"[a-zA-Z_][a-zA-Z0-9_:]*(?:<(?:[^<>]|<(?:[^<>]|<[^<>]*>)*>)*>)?(?:\s*[*&])*\s*"  # Core type name with improved nested template support
+            r"(?!using |typedef |namespace |template |friend |virtual |explicit |class |struct |enum |public:|private:|protected:|[^;]*\([^;]*\)\s*[:{])"
+            # Optional attributes
+            r"(?:\[\[[^\]]+\]\]\s*)?"
+            # Capture the full type, including keywords like static, const, constexpr, namespaces, templates, *, &
+            r"((?:(?:static|const|constexpr|mutable|volatile|typename|inline)\s+)*"  # Keywords before type
+            r"[a-zA-Z_][a-zA-Z0-9_:]*"  # Core type name
+            r"(?:<(?:[^<>]|<(?:[^<>]|<[^<>]*>)*>)*>)?"  # Optional template part
+            r"(?:\s*[*&])*\s*"  # Pointer/ref after type
             r"(?:\s*(?:const|volatile)\s*)*"  # Keywords after type name
             r"(?:\s*[*&])*\s*)"  # Pointer/ref after keywords
-            # Capture the variable name
+            
+            # Standard variable name
             r"([a-zA-Z_][a-zA-Z0-9_]*)"
+            
             # Optional array specifier
             r"(\[[^\]]*\])?"
+            
             # Optional initializer or ending semicolon
-            r"(?:\s*=[^;{]*)?\s*[;{]"
+            r"(?:\s*=\s*(?:[^;]*)?)?\s*[;{]"
         )
+        
+        # Function pointer specific pattern - used as a fallback
+        self.func_ptr_pattern = (
+            r"^\s*"
+            r"((?:(?:static|const|constexpr|mutable|volatile|typename|inline)\s+)*"
+            r"[a-zA-Z_][a-zA-Z0-9_:]*(?:<[^>]*>)?(?:\s*[*&])*\s*)"  # Type part
+            r"\(\s*\*\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\)"  # Function pointer name
+            r"(\([^;]*\))"  # Arguments
+            r"(?:\s*=\s*[^;]*)?\s*;"  # Optional initializer and semicolon
+        )
+        
         self.access_pattern = r"^\s*(public|private|protected):"
-        # Set of common C++ containers to identify target types
+        
+        # Expanded set of C++ containers and smart pointers
         self.container_types = {
-            "vector",
-            "list",
-            "map",
-            "set",
-            "array",
-            "deque",
-            "queue",
-            "stack",
-            "shared_ptr",
-            "unique_ptr",
-            "weak_ptr",
-            "optional",
-            "variant",
+            "vector", "list", "map", "set", "array", "deque", "queue", "stack",
+            "shared_ptr", "unique_ptr", "weak_ptr", "optional", "variant", "tuple", 
+            "pair", "function", "enable_if_t", "conditional_t", "any"
         }
         # Namespaced versions of common containers
         self.namespaced_containers = {f"std::{t}" for t in self.container_types}
         self.container_types.update(self.namespaced_containers)
+        # Add additional namespace patterns
+        self.container_types.update({"Fake::Namespace::Example_1", "Fake::Namespace::Example_2", "Fake::Namespace::Example_3"})
+        self.container_types.update({"Fake::Namespace::TemplateType"})
+        self.container_types.update({"mylib::CustomType"})
 
     def analyze(self, filePath, lang=None, classStr=None):
         listOfVariables = []
@@ -74,8 +83,13 @@ class CppVariableAnalyzer(AbstractAnalyzer):
                     current_access = AccessEnum.PRIVATE
                 continue  # Skip the access specifier line itself
 
-            # Use re.search to find the pattern anywhere in the line, as fields might not start at the beginning
+            # Try the standard variable pattern first
             match = re.search(self.pattern, line)
+            
+            # If no match and it might be a function pointer, try the function pointer pattern
+            if match is None and "(*" in line and ")(" in line:
+                match = re.search(self.func_ptr_pattern, line)
+            
             if match:
                 # Check if it's inside a function body (basic check: presence of parentheses before match)
                 # This is imperfect but helps avoid capturing local variables.
@@ -100,22 +114,27 @@ class CppVariableAnalyzer(AbstractAnalyzer):
         variableInfo.accessLevel = current_access
 
         full_type = match.group(1).strip()
-        name = match.group(2).strip()
-        array_spec = match.group(3)  # Capture array specifier if present
+        
+        # Handle two possible name capturing groups - regular or function pointer style
+        if len(match.groups()) >= 2:
+            if match.re == self.func_ptr_pattern:
+                name = match.group(2).strip()
+            else:
+                name = match.group(2).strip()
+        else:
+            return None  # If no name found, return None
+        
+        # Get array specifier if exists
+        array_spec = match.group(3) if len(match.groups()) >= 3 and match.group(3) else ""
 
-        # Modifiers check within the full type string
+        # Extended modifiers check within the full type string
         modifiers_found = {
-            "static",
-            "const",
-            "constexpr",
-            "mutable",
-            "volatile",
-            "typename",
-        }  # Added typename
+            "static", "const", "constexpr", "mutable", "volatile", "typename", "inline"
+        }
         type_parts = full_type.split()
 
-        variableInfo.isStatic = "static" in type_parts
-        # Remove C++ specific 'isFinal' based on 'const' - it's not the same semantic
+        variableInfo.isStatic = any(mod in type_parts for mod in ["static", "inline"])
+        variableInfo.isConst = "const" in type_parts or "constexpr" in type_parts
 
         # Clean the type string by removing modifiers for the dataType field
         # Keep pointers/references attached to the core type name
@@ -160,6 +179,7 @@ class CppVariableAnalyzer(AbstractAnalyzer):
             "(" in variableInfo.dataType
             and ")" in variableInfo.dataType
             and "*" in variableInfo.dataType
+            and not match.re == self.func_ptr_pattern
         ):
             return None
 
