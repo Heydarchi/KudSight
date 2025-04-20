@@ -163,11 +163,13 @@ class TestCppMethodAnalyzer(unittest.TestCase):
         # Test method with trailing return type and const qualifier
         methodAnalyzer = CppMethodAnalyzer()
         inputStr = "auto computeRisk(int level) const -> double {"
-        
+
         match = re.search(methodAnalyzer.pattern, inputStr)
         self.assertIsNotNone(match)
-        methodInfo = methodAnalyzer.extractMethodInfo(inputStr, match, AccessEnum.PUBLIC)
-        
+        methodInfo = methodAnalyzer.extractMethodInfo(
+            inputStr, match, AccessEnum.PUBLIC
+        )
+
         self.assertEqual(methodInfo.name, "computeRisk")
         self.assertEqual(methodInfo.dataType, "double")
         self.assertTrue(methodInfo.isConst)
@@ -176,11 +178,13 @@ class TestCppMethodAnalyzer(unittest.TestCase):
         # Test method with reference qualifier
         methodAnalyzer = CppMethodAnalyzer()
         inputStr = "std::string&& rvalueDeclared() && {"
-        
+
         match = re.search(methodAnalyzer.pattern, inputStr)
         self.assertIsNotNone(match)
-        methodInfo = methodAnalyzer.extractMethodInfo(inputStr, match, AccessEnum.PUBLIC)
-        
+        methodInfo = methodAnalyzer.extractMethodInfo(
+            inputStr, match, AccessEnum.PUBLIC
+        )
+
         self.assertEqual(methodInfo.name, "rvalueDeclared")
         self.assertEqual(methodInfo.dataType, "std::string&&")
 
@@ -188,11 +192,13 @@ class TestCppMethodAnalyzer(unittest.TestCase):
         # Test method with noexcept specifier
         methodAnalyzer = CppMethodAnalyzer()
         inputStr = "double computeEnergy(int level) noexcept {"
-        
+
         match = re.search(methodAnalyzer.pattern, inputStr)
         self.assertIsNotNone(match)
-        methodInfo = methodAnalyzer.extractMethodInfo(inputStr, match, AccessEnum.PUBLIC)
-        
+        methodInfo = methodAnalyzer.extractMethodInfo(
+            inputStr, match, AccessEnum.PUBLIC
+        )
+
         self.assertEqual(methodInfo.name, "computeEnergy")
         self.assertEqual(methodInfo.dataType, "double")
         self.assertTrue(methodInfo.hasNoexcept)
@@ -201,11 +207,13 @@ class TestCppMethodAnalyzer(unittest.TestCase):
         # Test template method with multiple type parameters
         methodAnalyzer = CppMethodAnalyzer()
         inputStr = "template<typename T, typename U> std::pair<T, U> mixTypes(const T& t, const U& u) {"
-        
+
         match = re.search(methodAnalyzer.pattern, inputStr)
         self.assertIsNotNone(match)
-        methodInfo = methodAnalyzer.extractMethodInfo(inputStr, match, AccessEnum.PUBLIC)
-        
+        methodInfo = methodAnalyzer.extractMethodInfo(
+            inputStr, match, AccessEnum.PUBLIC
+        )
+
         self.assertEqual(methodInfo.name, "mixTypes")
         self.assertEqual(methodInfo.dataType, "std::pair<T, U>")
         self.assertTrue(methodInfo.hasTemplate)
@@ -214,7 +222,7 @@ class TestCppMethodAnalyzer(unittest.TestCase):
         # Test method with [[nodiscard]] attribute
         methodAnalyzer = CppMethodAnalyzer()
         inputStr = "[[nodiscard]] auto computeRisk(int level) const -> double {"
-        
+
         match = re.search(methodAnalyzer.pattern, inputStr)
         self.assertIsNotNone(match)
         self.assertIsNotNone(match)
@@ -223,11 +231,13 @@ class TestCppMethodAnalyzer(unittest.TestCase):
         # Test variadic template method
         methodAnalyzer = CppMethodAnalyzer()
         inputStr = "template<typename... Args> void variadicDeclared(Args&&... args) {"
-        
+
         match = re.search(methodAnalyzer.pattern, inputStr)
         self.assertIsNotNone(match)
-        methodInfo = methodAnalyzer.extractMethodInfo(inputStr, match, AccessEnum.PUBLIC)
-        
+        methodInfo = methodAnalyzer.extractMethodInfo(
+            inputStr, match, AccessEnum.PUBLIC
+        )
+
         self.assertEqual(methodInfo.name, "variadicDeclared")
         self.assertEqual(methodInfo.dataType, "void")
         self.assertTrue(methodInfo.hasTemplate)
@@ -236,25 +246,30 @@ class TestCppMethodAnalyzer(unittest.TestCase):
         # Test method where name is same as return type
         methodAnalyzer = CppMethodAnalyzer()
         inputStr = "Fake::Namespace::Example_1 Example_1() {"
-        
+
         match = re.search(methodAnalyzer.pattern, inputStr)
         self.assertIsNotNone(match)
-        methodInfo = methodAnalyzer.extractMethodInfo(inputStr, match, AccessEnum.PUBLIC)
-        
+        methodInfo = methodAnalyzer.extractMethodInfo(
+            inputStr, match, AccessEnum.PUBLIC
+        )
+
         self.assertEqual(methodInfo.name, "Example_1")
         self.assertEqual(methodInfo.dataType, "Fake::Namespace::Example_1")
 
     def test_analyze_method_footprints_file(self):
         # Test parsing the entire MethodFootprintsExtended.hpp file
         methodAnalyzer = CppMethodAnalyzer()
-        
+
         file_path = "/home/mhh/Projects/KudSight/app/tests/ref_files/cpp/MethodFootprintsExtended.hpp"
-        
+
         if not os.path.exists(file_path):
-            os.makedirs("/home/mhh/Projects/KudSight/app/tests/ref_files/cpp", exist_ok=True)
-            
+            os.makedirs(
+                "/home/mhh/Projects/KudSight/app/tests/ref_files/cpp", exist_ok=True
+            )
+
             with open(file_path, "w") as f:
-                f.write("""
+                f.write(
+                    """
 #ifndef METHOD_FOOTPRINTS_EXTENDED_HPP
 #define METHOD_FOOTPRINTS_EXTENDED_HPP
 
@@ -317,14 +332,15 @@ private:
 };
 
 #endif // METHOD_FOOTPRINTS_EXTENDED_HPP
-                """)
-        
+                """
+                )
+
         file_content = FileReader().read_file(file_path)
-        
+
         methods = methodAnalyzer.analyze(None, None, file_content)
-        
+
         self.assertTrue(len(methods) > 25)
-        
+
         method_names = [m.name for m in methods]
         self.assertIn("initialize", method_names)
         self.assertIn("getName", method_names)
@@ -333,9 +349,9 @@ private:
         self.assertIn("computeRisk", method_names)
         self.assertIn("Example_1", method_names)
         self.assertIn("vector", method_names)
-        
+
         const_methods = [m for m in methods if m.isConst]
         self.assertTrue(len(const_methods) >= 5)
-        
+
         virtual_methods = [m for m in methods if m.isVirtual]
         self.assertTrue(len(virtual_methods) >= 2)

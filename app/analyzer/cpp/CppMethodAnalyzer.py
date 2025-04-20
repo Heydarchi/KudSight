@@ -216,8 +216,15 @@ class CppMethodAnalyzer(AbstractAnalyzer):
 
         # Clean up return type
         type_keywords_to_remove = {
-            "virtual", "static", "inline", "explicit", "constexpr",
-            "public:", "private:", "protected:", "typename"
+            "virtual",
+            "static",
+            "inline",
+            "explicit",
+            "constexpr",
+            "public:",
+            "private:",
+            "protected:",
+            "typename",
         }
         cleaned_group1_parts = []
         pointer_ref = ""
@@ -243,12 +250,14 @@ class CppMethodAnalyzer(AbstractAnalyzer):
         # Handle various method types
         is_destructor = method_name.startswith("~")
         is_constructor = False
-        
+
         # Check if method name matches return type (constructor-like pattern)
         if not is_destructor:
             # Extract base name from cleaned_group1 (removing namespace qualifiers)
-            base_type_name = cleaned_group1.split("::")[-1].strip() if cleaned_group1 else ""
-            
+            base_type_name = (
+                cleaned_group1.split("::")[-1].strip() if cleaned_group1 else ""
+            )
+
             # Check for constructors - with no return type or matching class name
             # Modify constructor detection to not consider method name == return type as constructor
             # unless there's no scope qualifier (i.e., it's inside the class)
@@ -274,9 +283,13 @@ class CppMethodAnalyzer(AbstractAnalyzer):
             methodInfo.dataType = cleaned_group1 if cleaned_group1 else "auto"
 
         # Set additional flags
-        methodInfo.isStatic = re.search(r"^\s*static\s+", inputString, re.IGNORECASE) is not None
+        methodInfo.isStatic = (
+            re.search(r"^\s*static\s+", inputString, re.IGNORECASE) is not None
+        )
         methodInfo.isAbstract = is_abstract
-        methodInfo.isVirtual = "virtual" in inputString.lower() or override_final or is_abstract
+        methodInfo.isVirtual = (
+            "virtual" in inputString.lower() or override_final or is_abstract
+        )
         methodInfo.isConst = is_const_method
         methodInfo.isOverride = is_override
         methodInfo.isFinal = is_final
@@ -286,7 +299,13 @@ class CppMethodAnalyzer(AbstractAnalyzer):
         methodInfo.params = self.extractParams(params_str)
 
         # Validation
-        if not methodInfo.name or methodInfo.name in {"public:", "private:", "protected:", "result", "return"}:
+        if not methodInfo.name or methodInfo.name in {
+            "public:",
+            "private:",
+            "protected:",
+            "result",
+            "return",
+        }:
             return None
 
         return methodInfo

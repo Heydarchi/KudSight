@@ -23,17 +23,14 @@ class CppVariableAnalyzer(AbstractAnalyzer):
             r"(?:\s*[*&])*\s*"  # Pointer/ref after type
             r"(?:\s*(?:const|volatile)\s*)*"  # Keywords after type name
             r"(?:\s*[*&])*\s*)"  # Pointer/ref after keywords
-            
             # Standard variable name
             r"([a-zA-Z_][a-zA-Z0-9_]*)"
-            
             # Optional array specifier
             r"(\[[^\]]*\])?"
-            
             # Optional initializer or ending semicolon
             r"(?:\s*=\s*(?:[^;]*)?)?\s*[;{]"
         )
-        
+
         # Function pointer specific pattern - used as a fallback
         self.func_ptr_pattern = (
             r"^\s*"
@@ -43,20 +40,42 @@ class CppVariableAnalyzer(AbstractAnalyzer):
             r"(\([^;]*\))"  # Arguments
             r"(?:\s*=\s*[^;]*)?\s*;"  # Optional initializer and semicolon
         )
-        
+
         self.access_pattern = r"^\s*(public|private|protected):"
-        
+
         # Expanded set of C++ containers and smart pointers
         self.container_types = {
-            "vector", "list", "map", "set", "array", "deque", "queue", "stack",
-            "shared_ptr", "unique_ptr", "weak_ptr", "optional", "variant", "tuple", 
-            "pair", "function", "enable_if_t", "conditional_t", "any"
+            "vector",
+            "list",
+            "map",
+            "set",
+            "array",
+            "deque",
+            "queue",
+            "stack",
+            "shared_ptr",
+            "unique_ptr",
+            "weak_ptr",
+            "optional",
+            "variant",
+            "tuple",
+            "pair",
+            "function",
+            "enable_if_t",
+            "conditional_t",
+            "any",
         }
         # Namespaced versions of common containers
         self.namespaced_containers = {f"std::{t}" for t in self.container_types}
         self.container_types.update(self.namespaced_containers)
         # Add additional namespace patterns
-        self.container_types.update({"Fake::Namespace::Example_1", "Fake::Namespace::Example_2", "Fake::Namespace::Example_3"})
+        self.container_types.update(
+            {
+                "Fake::Namespace::Example_1",
+                "Fake::Namespace::Example_2",
+                "Fake::Namespace::Example_3",
+            }
+        )
         self.container_types.update({"Fake::Namespace::TemplateType"})
         self.container_types.update({"mylib::CustomType"})
 
@@ -85,11 +104,11 @@ class CppVariableAnalyzer(AbstractAnalyzer):
 
             # Try the standard variable pattern first
             match = re.search(self.pattern, line)
-            
+
             # If no match and it might be a function pointer, try the function pointer pattern
             if match is None and "(*" in line and ")(" in line:
                 match = re.search(self.func_ptr_pattern, line)
-            
+
             if match:
                 # Check if it's inside a function body (basic check: presence of parentheses before match)
                 # This is imperfect but helps avoid capturing local variables.
@@ -114,7 +133,7 @@ class CppVariableAnalyzer(AbstractAnalyzer):
         variableInfo.accessLevel = current_access
 
         full_type = match.group(1).strip()
-        
+
         # Handle two possible name capturing groups - regular or function pointer style
         if len(match.groups()) >= 2:
             if match.re == self.func_ptr_pattern:
@@ -123,13 +142,21 @@ class CppVariableAnalyzer(AbstractAnalyzer):
                 name = match.group(2).strip()
         else:
             return None  # If no name found, return None
-        
+
         # Get array specifier if exists
-        array_spec = match.group(3) if len(match.groups()) >= 3 and match.group(3) else ""
+        array_spec = (
+            match.group(3) if len(match.groups()) >= 3 and match.group(3) else ""
+        )
 
         # Extended modifiers check within the full type string
         modifiers_found = {
-            "static", "const", "constexpr", "mutable", "volatile", "typename", "inline"
+            "static",
+            "const",
+            "constexpr",
+            "mutable",
+            "volatile",
+            "typename",
+            "inline",
         }
         type_parts = full_type.split()
 

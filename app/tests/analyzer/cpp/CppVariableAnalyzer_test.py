@@ -109,7 +109,7 @@ class TestCppVariableAnalyzer(unittest.TestCase):
     def test_inline_static_variable_pattern(self):
         # Test detection of inline static variable
         variableAnalyzer = CppVariableAnalyzer()
-        inputStr = "inline static std::string globalTag = \"tag\";"
+        inputStr = 'inline static std::string globalTag = "tag";'
 
         match = re.search(variableAnalyzer.pattern, inputStr)
         self.assertIsNotNone(match)
@@ -122,12 +122,18 @@ class TestCppVariableAnalyzer(unittest.TestCase):
         inputStr = "void (*funcPtr)(int) = nullptr;"
 
         # For function pointers, we need to use the specialized pattern
-        match = re.search(variableAnalyzer.func_ptr_pattern, inputStr) if not re.search(variableAnalyzer.pattern, inputStr) else re.search(variableAnalyzer.pattern, inputStr)
+        match = (
+            re.search(variableAnalyzer.func_ptr_pattern, inputStr)
+            if not re.search(variableAnalyzer.pattern, inputStr)
+            else re.search(variableAnalyzer.pattern, inputStr)
+        )
         self.assertIsNotNone(match)
         # Check that type contains "void"
         self.assertTrue("void" in match.group(1).strip())
         # Just check that we have a match and the analyzer extracts the name correctly
-        variableInfo = variableAnalyzer.extractVariableInfo(inputStr, match, AccessEnum.PRIVATE)
+        variableInfo = variableAnalyzer.extractVariableInfo(
+            inputStr, match, AccessEnum.PRIVATE
+        )
         self.assertEqual(variableInfo.name, "funcPtr")
 
     def test_namespaced_custom_types(self):
@@ -153,11 +159,16 @@ class TestCppVariableAnalyzer(unittest.TestCase):
     def test_complex_template_type(self):
         # Test detection of complex template type
         variableAnalyzer = CppVariableAnalyzer()
-        inputStr = "std::tuple<std::string, std::vector<mylib::CustomType>> nestedTypes;"
+        inputStr = (
+            "std::tuple<std::string, std::vector<mylib::CustomType>> nestedTypes;"
+        )
 
         match = re.search(variableAnalyzer.pattern, inputStr)
         self.assertIsNotNone(match)
-        self.assertEqual(match.group(1).strip(), "std::tuple<std::string, std::vector<mylib::CustomType>>")
+        self.assertEqual(
+            match.group(1).strip(),
+            "std::tuple<std::string, std::vector<mylib::CustomType>>",
+        )
         self.assertEqual(match.group(2).strip(), "nestedTypes")
 
     def test_extract_variable_info_basic(self):
@@ -239,18 +250,23 @@ class TestCppVariableAnalyzer(unittest.TestCase):
     def test_analyze_variable_footprints_file(self):
         # Test parsing the entire VariableFootprints.hpp file
         variableAnalyzer = CppVariableAnalyzer()
-        
+
         # Fix path format for Linux
-        file_path = "/home/mhh/Projects/KudSight/app/tests/ref_files/cpp/VariableFootprints.hpp"
-        
+        file_path = (
+            "/home/mhh/Projects/KudSight/app/tests/ref_files/cpp/VariableFootprints.hpp"
+        )
+
         # Check if file exists first and provide test content if it doesn't
         if not os.path.exists(file_path):
             # Create test directory if it doesn't exist
-            os.makedirs("/home/mhh/Projects/KudSight/app/tests/ref_files/cpp", exist_ok=True)
-            
-            # Use the file content from your provided samples 
+            os.makedirs(
+                "/home/mhh/Projects/KudSight/app/tests/ref_files/cpp", exist_ok=True
+            )
+
+            # Use the file content from your provided samples
             with open(file_path, "w") as f:
-                f.write("""
+                f.write(
+                    """
 #ifndef VARIABLE_FOOTPRINTS_HPP
 #define VARIABLE_FOOTPRINTS_HPP
 
@@ -338,15 +354,16 @@ private:
 };
 
 #endif // VARIABLE_FOOTPRINTS_HPP
-                """)
-        
+                """
+                )
+
         file_content = FileReader().read_file(file_path)
-        
+
         variables = variableAnalyzer.analyze(None, None, file_content)
-        
+
         # Let's check for some key variables we expect to find
         self.assertTrue(len(variables) > 15)  # Should find many variables
-        
+
         # Check for specific key variables
         var_names = [v.name for v in variables]
         self.assertIn("count", var_names)
@@ -356,11 +373,11 @@ private:
         self.assertIn("sharedData", var_names)
         self.assertIn("customValue", var_names)
         self.assertIn("example1", var_names)
-        
+
         # Check for static variables
         static_vars = [v for v in variables if v.isStatic]
         self.assertTrue(len(static_vars) >= 3)
-        
+
         # Verify container types extraction
         container_vars = [v for v in variables if v.dataType.startswith("std::")]
         self.assertTrue(len(container_vars) >= 5)
