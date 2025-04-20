@@ -86,7 +86,7 @@ class CppClassAnalyzer(AbstractAnalyzer):
                     classInfo.hasTemplate = True
                     template_str = template_match.group(0)
                     template_params = self.extract_template_params(template_str)
-                    
+
                     classInfo.params = []
                     classInfo.templateParams = template_params
                     for param in template_params:
@@ -135,8 +135,8 @@ class CppClassAnalyzer(AbstractAnalyzer):
         end = template_str.rfind(">")
         if start < 0 or end < 0 or start >= end:
             return []
-            
-        params_str = template_str[start+1:end].strip()
+
+        params_str = template_str[start + 1 : end].strip()
         return analyzer_helper.parse_template_params(params_str)
 
     def find_class_pattern(self, pattern, inputStr):
@@ -201,7 +201,7 @@ class CppClassAnalyzer(AbstractAnalyzer):
         inheritance_list = list()
         cleaner = self._get_type_cleaner()
         existing_relation_names = {cleaner(rel.name) for rel in existing_relations}
-        
+
         all_template_params = set(class_params)
         for method in methods:
             if method.hasTemplate and method.templateParams:
@@ -211,7 +211,7 @@ class CppClassAnalyzer(AbstractAnalyzer):
                         param_name = parts[-1].strip()
                         param_name = re.sub(r"=.*", "", param_name).strip()
                         all_template_params.add(param_name)
-        
+
         template_params_to_ignore = all_template_params
 
         known_containers = {
@@ -233,14 +233,14 @@ class CppClassAnalyzer(AbstractAnalyzer):
 
             # Sanitize type name before processing to avoid malformed types
             # Fix template-related syntax that could cause issues
-            if '>' in type_name and '<' not in type_name:
+            if ">" in type_name and "<" not in type_name:
                 # Malformed template syntax
                 return
-            if type_name.endswith('>'):
+            if type_name.endswith(">"):
                 # Check for potentially malformed template types like "templates::T>"
                 # that were incorrectly extracted
-                parts = type_name.split('::')
-                if len(parts) > 1 and '>' in parts[-1] and '<' not in parts[-1]:
+                parts = type_name.split("::")
+                if len(parts) > 1 and ">" in parts[-1] and "<" not in parts[-1]:
                     return
 
             temp_cleaner_keep_templates = self._get_type_cleaner(strip_templates=False)
@@ -253,8 +253,14 @@ class CppClassAnalyzer(AbstractAnalyzer):
                 container_name = container_match.group(1)
                 inner_types_str = container_match.group(2)
 
-                base_container = container_name.split("::")[-1] if "::" in container_name else container_name
-                if base_container in known_containers or self._is_primitive_or_common(container_name):
+                base_container = (
+                    container_name.split("::")[-1]
+                    if "::" in container_name
+                    else container_name
+                )
+                if base_container in known_containers or self._is_primitive_or_common(
+                    container_name
+                ):
                     inner_types = []
                     level = 0
                     current_inner = ""
@@ -275,12 +281,14 @@ class CppClassAnalyzer(AbstractAnalyzer):
 
                     for inner_type in inner_types:
                         add_dependency_recursive(inner_type)
-                    
+
                     cleaned_container_type = cleaner(container_name)
-                    if (cleaned_container_type and 
-                        cleaned_container_type not in existing_relation_names and
-                        not self._is_primitive_or_common(cleaned_container_type) and
-                        cleaned_container_type not in template_params_to_ignore):
+                    if (
+                        cleaned_container_type
+                        and cleaned_container_type not in existing_relation_names
+                        and not self._is_primitive_or_common(cleaned_container_type)
+                        and cleaned_container_type not in template_params_to_ignore
+                    ):
                         inheritance_list.append(
                             Inheritance(
                                 name=cleaned_container_type,

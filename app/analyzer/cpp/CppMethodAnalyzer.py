@@ -114,7 +114,7 @@ class CppMethodAnalyzer(AbstractAnalyzer):
                 seen_methods.add(method_tuple)
 
         return unique_methods
-    
+
     def extract_template_params(self, inputString):
         """
         Extracts template parameters from a template declaration string.
@@ -180,7 +180,7 @@ class CppMethodAnalyzer(AbstractAnalyzer):
         is_abstract = pure_virtual_specifier == "= 0"
 
         # Skip malformed or auto-generated method artifacts
-        if method_name in ['result', 'return'] or ' ' in method_name:
+        if method_name in ["result", "return"] or " " in method_name:
             return None
 
         type_keywords_to_remove = {
