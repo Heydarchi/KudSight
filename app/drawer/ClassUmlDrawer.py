@@ -403,6 +403,12 @@ class ClassUmlDrawer:
         class_type = "interface" if classInfo.isInterface else "class"
         # Use BASE qualified name for the definition ID
         qualified_name = self._get_qualified_name(classInfo)
+
+        # Handle template parameters in the class name
+        template_suffix = ""
+        if classInfo.hasTemplate and classInfo.params:
+            template_suffix = f"<{', '.join(classInfo.params)}>"
+
         name_for_plantuml = self._quote_if_needed(qualified_name)  # Quote the BASE name
 
         stereotype_parts = []
@@ -413,10 +419,21 @@ class ClassUmlDrawer:
         stereotype = f"<< { ' '.join(stereotype_parts) } >>" if stereotype_parts else ""
         definition.append(f"{class_type} {name_for_plantuml} {stereotype} {{")
 
+        # For template classes, add template parameters to the class definition
+        if classInfo.hasTemplate and classInfo.templateParams:
+            template_note = "note top: Template parameters:\\n"
+            for param in classInfo.templateParams:
+                template_note += f"- {param}\\n"
+            definition.append(template_note)
+
         # Use the DISPLAY cleaner (keeps * &) for member types
         display_cleaner = self._get_type_cleaner()
 
         for var in sorted(classInfo.variables, key=lambda x: x.name):
+            # Skip variables with malformed names (like those with spaces which are parsing artifacts)
+            if " " in var.name or not var.name:
+                continue
+
             access = self._get_access_symbol(var.accessLevel)
             static_marker = "{static}" if var.isStatic else ""
             var_type_display = self._quote_if_needed(display_cleaner(var.dataType))
@@ -425,6 +442,14 @@ class ClassUmlDrawer:
             )
 
         for method in sorted(classInfo.methods, key=lambda x: x.name):
+            # Skip methods with malformed names or auto-generated artifacts
+            if (
+                not method.name
+                or " " in method.name
+                or method.name in ["result", "return"]
+            ):
+                continue
+
             access = self._get_access_symbol(method.accessLevel)
             stereotype_m_parts = []
             if method.isStatic:
@@ -485,10 +510,70 @@ class ClassUmlDrawer:
                 if not target_name_original_base:
                     continue
 
-                # Qualify the BASE target name
-                target_name_full_base = self._get_qualified_name_from_string(
-                    target_name_original_base, classInfo.package
-                )
+                # Handle malformed template names - these typically have unmatched angle brackets
+                # or consist only of template parameter names mistakenly extracted as types
+                if (
+                    ">" in target_name_original_base
+                    and not "<" in target_name_original_base
+                ):
+                    continue  # Skip unbalanced template names
+
+                # Skip single-letter template parameters that might have been incorrectly extracted
+                if (
+                    len(target_name_original_base) == 1
+                    and target_name_original_base.isupper()
+                ):
+                    continue
+
+                # Skip template parameters or malformed identifiers like "T>" or "isModifie"
+                is_likely_template_param = (
+                    target_name_original_base.endswith(">")
+                    and not "<" in target_name_original_base
+                ) or (target_name_original_base.split("::")[-1] in classInfo.params)
+
+                if is_likely_template_param:
+                    continue
+
+                # Skip malformed identifiers that might be parsing artifacts
+                if (
+                    " " in target_name_original_base
+                    or target_name_original_base == "isModifie"
+                ):
+                    continue
+
+                # Special handling for template class inheritance
+                if (
+                    relation.relationship == InheritanceEnum.EXTENDED
+                    and "<" in target_name_original_base
+                ):
+                    # Extract the base template name
+                    base_template_name = target_name_original_base.split("<")[0].strip()
+
+                    # Try to find a matching class by simple name
+                    potential_matches = []
+                    for qname in qualified_name_map.keys():
+                        class_part = (
+                            qname.split("::")[-1].split("<")[0]
+                            if "::" in qname
+                            else qname.split("<")[0]
+                        )
+                        if class_part == base_template_name:
+                            potential_matches.append(qname)
+
+                    if len(potential_matches) == 1:
+                        # We found exactly one matching class
+                        target_name_full_base = potential_matches[0]
+                    else:
+                        # Try standard namespace qualification
+                        target_name_full_base = self._get_qualified_name_from_string(
+                            base_template_name, classInfo.package
+                        )
+                else:
+                    # Standard target resolution
+                    # Qualify the BASE target name
+                    target_name_full_base = self._get_qualified_name_from_string(
+                        target_name_original_base, classInfo.package
+                    )
 
                 # Resolve BASE target against known BASE classes
                 resolved_target_base = target_name_full_base

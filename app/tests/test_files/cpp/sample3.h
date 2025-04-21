@@ -15,6 +15,8 @@ namespace CompanyA::Logging {
     private:
         int logLevel = 1;
         MyCompany::Utils* internalUtils; // Dependency on another namespace (pointer)
+        std::vector< MyCompany::CoreSuperBase::Base> vecBase; // Vector to store Base class pointers
+        std::vector< MyCompany::CoreSuperBase::ExampleClass<int> > vecExample; // Vector to store ExampleClass objects
 
     public:
         Logger(int level = 1);

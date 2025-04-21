@@ -17,8 +17,10 @@ class AccessEnum(Enum):
 
 @dataclass
 class VariableNode:
+    package: str = ""
     name: str = ""
     dataType: str = ""
+    targetType: str = ""  # Added targetType field to store the contained type
     accessLevel: AccessEnum = AccessEnum.PUBLIC
     isStatic: bool = False
     isFinal: bool = False
@@ -33,6 +35,8 @@ class MethodNode:
     isStatic: bool = False
     isOverridden: bool = False
     isAbstract: bool = False
+    hasTemplate: bool = False
+    templateParams: List[str] = field(default_factory=list)
     variables: List[VariableNode] = field(default_factory=list)
 
 
@@ -57,6 +61,8 @@ class ClassNode:
     isFinal: bool = False
     isInterface: bool = False
     isAbstract: bool = False
+    hasTemplate: bool = False
+    templateParams: List[str] = field(default_factory=list)
     variables: List[VariableNode] = field(default_factory=list)
     methods: List[MethodNode] = field(default_factory=list)
     relations: List[Inheritance] = field(default_factory=list)

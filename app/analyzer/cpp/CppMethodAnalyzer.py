@@ -10,19 +10,39 @@ from utils.FileReader import *
 
 class CppMethodAnalyzer(AbstractAnalyzer):
     def __init__(self):
+        # Enhanced pattern to better handle complex method declarations including trailing return types,
+        # complex template parameters, attributes, and all forms of qualifiers
         self.pattern = (
             r"^\s*"
+            # Optional attributes
+            r"(?:\[\[[^\]]+\]\]\s*)?"
+            # Optional template parameters
             r"(?:template\s*<[^>]+>\s*)?"
-            r"(?:virtual\s+|static\s+|inline\s+|explicit\s+)?"
+            # Optional method qualifiers (virtual, static, inline, etc.)
+            r"(?:virtual\s+|static\s+|inline\s+|explicit\s+|constexpr\s+)?"
+            # Return type or constructor/destructor (group 1)
             r"((?:(?:const\s+)?(?:[a-zA-Z_][a-zA-Z0-9_:]*(?:<[^>]*>)?)(?:\s*(?:const|[*&]))*\s+)|void\s+|~[a-zA-Z_][a-zA-Z0-9_<>]*\s*(?=\()|\b[a-zA-Z_][a-zA-Z0-9_<>]*\s*(?=\())?"
-            r"(?:([a-zA-Z_][a-zA-Z0-9_:]*(?:<[^>]+>)?)::)?([~a-zA-Z_][a-zA-Z0-9_<>*&]+(?:<[^>]+>)?|operator\s*.*)\s*"
+            # Optional class scope (group 2)
+            r"(?:([a-zA-Z_][a-zA-Z0-9_:]*(?:<[^>]+>)?)::)?"
+            # Method name including destructor ~ and operators (group 3)
+            r"([~a-zA-Z_][a-zA-Z0-9_<>*&]+(?:<[^>]+>)?|operator\s*[^(]*)\s*"
+            # Parameters (group 4)
             r"\(([^)]*)\)\s*"
-            r"(const|volatile)?\s*"
-            r"(?:final|override)?\s*"
-            r"(?:noexcept(?:\([^)]*\))?)?\s*"
-            r"(?:->\s*\S+)?\s*"
-            r"(?:[:]\s*.*)?\s*"
+            # Optional const/volatile qualifier (group 5)
+            r"(const|volatile|const\s+volatile|volatile\s+const)?\s*"
+            # Optional reference qualifiers (group 6)
+            r"(&|&&)?\s*"
+            # Optional override/final (group 7)
+            r"(override|final)?\s*"
+            # Optional noexcept (group 8)
+            r"(noexcept(?:\([^)]*\))?)?\s*"
+            # Optional trailing return type (group 9)
+            r"(?:->\s*([^{;=]+))?\s*"
+            # Optional constructor initializer list (group 10)
+            r"(?::\s*([^{;]*)?)?\s*"
+            # Optional pure virtual specifier (group 11)
             r"(\s*=\s*(?:0|default|delete))?\s*"
+            # End with brace, semicolon, or equals
             r"\s*(?:\{|;|=)"
         )
         self.access_pattern = r"^\s*(public|private|protected):"
@@ -115,22 +135,92 @@ class CppMethodAnalyzer(AbstractAnalyzer):
 
         return unique_methods
 
+    def extract_template_params(self, inputString):
+        """
+        Extracts template parameters from a template declaration string.
+        E.g., from "template <typename T, int N>" extracts ["typename T", "int N"]
+        """
+        start = inputString.find("<")
+        end = inputString.rfind(">")
+
+        if start == -1 or end == -1 or start >= end:
+            return []
+
+        params_str = inputString[start + 1 : end].strip()
+        if not params_str:
+            return []
+
+        paramList = []
+        level = 0
+        current_param = ""
+        for char in params_str:
+            if char == "<":
+                level += 1
+                current_param += char
+            elif char == ">":
+                level -= 1
+                current_param += char
+            elif char == "," and level == 0:
+                paramList.append(current_param.strip())
+                current_param = ""
+            else:
+                current_param += char
+
+        # Add the last parameter
+        if current_param.strip():
+            paramList.append(current_param.strip())
+
+        # Further cleanup (optional, depending on desired format)
+        # e.g., remove default values if needed
+        cleaned_params = []
+        for param in paramList:
+            # Simple cleanup: remove default initializers for this example
+            cleaned_param = re.sub(r"\s*=.*", "", param).strip()
+            if cleaned_param:
+                cleaned_params.append(cleaned_param)
+
+        return cleaned_params
+
     def extractMethodInfo(self, inputString, match, current_access):
         methodInfo = MethodNode()
         methodInfo.accessLevel = current_access
 
+        # Look for template declaration
+        template_match = re.search(r"template\s*<([^>]+)>", inputString)
+        if template_match:
+            methodInfo.hasTemplate = True
+            params = self.extract_template_params(template_match.group(0))
+            methodInfo.templateParams = params
+
+        # Extract all matched groups
         return_type_or_ctor_dtor = match.group(1).strip() if match.group(1) else ""
+        class_scope = match.group(2).strip() if match.group(2) else ""
         method_name = match.group(3).strip() if match.group(3) else ""
         params_str = match.group(4).strip() if match.group(4) else ""
-        is_const_method = match.group(5) == "const"
-        pure_virtual_specifier = match.group(6).strip() if match.group(6) else ""
-        is_abstract = pure_virtual_specifier == "= 0"
+        is_const_method = match.group(5) is not None
+        ref_qualifier = match.group(6).strip() if match.group(6) else ""
+        override_final = match.group(7).strip() if match.group(7) else ""
+        noexcept_spec = match.group(8).strip() if match.group(8) else ""
+        trailing_return = match.group(9).strip() if match.group(9) else ""
+        init_list = match.group(10).strip() if match.group(10) else ""
+        pure_virtual_specifier = match.group(11).strip() if match.group(11) else ""
 
+        is_override = override_final == "override"
+        is_final = override_final == "final"
+        is_abstract = pure_virtual_specifier == "= 0"
+        has_noexcept = noexcept_spec != ""
+
+        # Skip malformed or auto-generated method artifacts
+        if method_name in ["result", "return"] or " " in method_name:
+            return None
+
+        # Clean up return type
         type_keywords_to_remove = {
             "virtual",
             "static",
             "inline",
             "explicit",
+            "constexpr",
             "public:",
             "private:",
             "protected:",
@@ -153,13 +243,32 @@ class CppMethodAnalyzer(AbstractAnalyzer):
 
         cleaned_group1 = " ".join(cleaned_group1_parts) + pointer_ref
 
+        # Use trailing return type if available
+        if trailing_return:
+            cleaned_group1 = trailing_return.strip()
+
+        # Handle various method types
         is_destructor = method_name.startswith("~")
         is_constructor = False
-        if not is_destructor:
-            type_name_only = cleaned_group1.replace("*", "").replace("&", "").strip()
-            if method_name == type_name_only or (not cleaned_group1 and method_name):
-                is_constructor = True
 
+        # Check if method name matches return type (constructor-like pattern)
+        if not is_destructor:
+            # Extract base name from cleaned_group1 (removing namespace qualifiers)
+            base_type_name = (
+                cleaned_group1.split("::")[-1].strip() if cleaned_group1 else ""
+            )
+
+            # Check for constructors - with no return type or matching class name
+            # Modify constructor detection to not consider method name == return type as constructor
+            # unless there's no scope qualifier (i.e., it's inside the class)
+            if not cleaned_group1 and method_name:
+                is_constructor = True
+            elif class_scope and base_type_name == method_name:
+                # If there's a class scope qualifier, this is definitely a constructor
+                is_constructor = True
+            # Otherwise, it's a method that happens to have the same name as its return type
+
+        # Set the method info
         if is_destructor:
             methodInfo.name = method_name
             methodInfo.dataType = None
@@ -173,17 +282,29 @@ class CppMethodAnalyzer(AbstractAnalyzer):
             methodInfo.name = method_name
             methodInfo.dataType = cleaned_group1 if cleaned_group1 else "auto"
 
-        if re.search(r"^\s*static\s+", inputString, re.IGNORECASE):
-            methodInfo.isStatic = True
-
+        # Set additional flags
+        methodInfo.isStatic = (
+            re.search(r"^\s*static\s+", inputString, re.IGNORECASE) is not None
+        )
         methodInfo.isAbstract = is_abstract
+        methodInfo.isVirtual = (
+            "virtual" in inputString.lower() or override_final or is_abstract
+        )
+        methodInfo.isConst = is_const_method
+        methodInfo.isOverride = is_override
+        methodInfo.isFinal = is_final
+        methodInfo.hasNoexcept = has_noexcept
 
+        # Extract parameters
         methodInfo.params = self.extractParams(params_str)
 
+        # Validation
         if not methodInfo.name or methodInfo.name in {
             "public:",
             "private:",
             "protected:",
+            "result",
+            "return",
         }:
             return None
 

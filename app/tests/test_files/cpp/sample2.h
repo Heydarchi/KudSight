@@ -15,6 +15,7 @@ namespace CompanyB::UI {
         virtual ~Widget() = default;
         virtual void draw() = 0; // Abstract method
         void setPosition(int x, int y);
+        MyCompany::Core::ExampleClass<int> example; // Using a class from another namespace
     };
 
     class Button : public Widget {
