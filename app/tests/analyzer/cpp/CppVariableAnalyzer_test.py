@@ -252,9 +252,7 @@ class TestCppVariableAnalyzer(unittest.TestCase):
         variableAnalyzer = CppVariableAnalyzer()
 
         # Fix path format for Linux
-        file_path = (
-            "/home/mhh/Projects/KudSight/app/tests/ref_files/cpp/VariableFootprints.hpp"
-        )
+        file_path = "./tests/ref_files/cpp/VariableFootprints.hpp"
 
         # Check if file exists first and provide test content if it doesn't
         if not os.path.exists(file_path):

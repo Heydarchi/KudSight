@@ -260,7 +260,7 @@ class TestCppMethodAnalyzer(unittest.TestCase):
         # Test parsing the entire MethodFootprintsExtended.hpp file
         methodAnalyzer = CppMethodAnalyzer()
 
-        file_path = "/home/mhh/Projects/KudSight/app/tests/ref_files/cpp/MethodFootprintsExtended.hpp"
+        file_path = "./tests/ref_files/cpp/MethodFootprintsExtended.hpp"
 
         # Analyze the actual methods in detail
         file_content = FileReader().read_file(file_path)
