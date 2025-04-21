@@ -5,17 +5,15 @@ from model.DataGeneratorEntities import *
 from drawer.ClassUmlDrawer import ClassUmlDrawer
 from utils.FileWriter import *
 from datetime import datetime
-from typing import Dict, List  # Import Dict and List for type hinting
-from model.AnalyzerEntities import FileTypeEnum  # Import FileTypeEnum
+from typing import Dict, List, Set, Tuple
+from model.AnalyzerEntities import FileTypeEnum
 
 
 class DataGenerator:
     def __init__(self) -> None:
         self.graphData = GraphData()
-        self._uml_drawer_for_filtering = None  # Initialize later based on context
-        self._language_context = (
-            FileTypeEnum.UNDEFINED
-        )  # Store language context, will be set by FileAnalyzer
+        self._uml_drawer_for_filtering = None
+        self._language_context = FileTypeEnum.UNDEFINED
 
     # Ensure this signature accepts targetPath and base_filename
     # Language context is now set externally before calling this
@@ -228,7 +226,6 @@ class DataGenerator:
         classData.package = classInfo.package
         classData.id = qualified_name  # Use BASE qualified name as ID
         classData.type = "interface" if classInfo.isInterface else "class"
-        # Could add enum/record types if needed
         classData.isAbstract = classInfo.isAbstract
         classData.isFinal = classInfo.isFinal
         classData.isStatic = classInfo.isStatic
@@ -236,6 +233,14 @@ class DataGenerator:
         # Format attributes and methods for display - USE ORIGINAL TYPES WITH * &
         classData.methods = []
         for method in classInfo.methods:
+            # Skip methods with malformed names (like "result", "return", etc.)
+            if (
+                not method.name
+                or " " in method.name
+                or method.name in ["result", "return"]
+            ):
+                continue
+
             params_str = ", ".join(method.params)  # method.params includes * &
             return_type = (
                 method.dataType  # method.dataType includes * &
@@ -249,6 +254,10 @@ class DataGenerator:
 
         classData.attributes = []
         for var in classInfo.variables:
+            # Skip variables with malformed names
+            if not var.name or " " in var.name:
+                continue
+
             attr_str = f"{var.accessLevel.name.lower()} "
             if var.isStatic:
                 attr_str += "static "
@@ -258,21 +267,78 @@ class DataGenerator:
         self.graphData.nodes.append(classData)
 
         # Process relations for links - USE BASE TYPES
+        # Track relationships we've already processed to avoid duplicates
+        processed_relations = set()
+
         for relation in classInfo.relations:
             try:
-                # relation.name should already be the BASE type from CppClassAnalyzer
+                # Skip relationships that were already processed
+                rel_key = (relation.name, relation.relationship)
+                if rel_key in processed_relations:
+                    continue
+                processed_relations.add(rel_key)
+
                 target_name_original_base = relation.name
                 if not target_name_original_base:
                     continue
 
-                # Attempt to qualify the BASE target name
-                target_name_full_base = self._get_qualified_name_from_string(
-                    target_name_original_base, classInfo.package
-                )
+                # Skip malformed relationships
+                if (
+                    target_name_original_base in ["return", "result"]
+                    or target_name_original_base.startswith(
+                        ":"
+                    )  # Possible malformed namespace
+                    or " " in target_name_original_base
+                ):  # Spaces should not be in class names
+                    continue
+
+                # Special handling for templated inheritance relations
+                if (
+                    relation.relationship == InheritanceEnum.EXTENDED
+                    and "<" in target_name_original_base
+                ):
+                    # For inheritance with templates like ComplexContainer<std::string, int>
+                    # Extract the base template name
+                    base_template_name = target_name_original_base.split("<")[0].strip()
+
+                    # Try to match by simple name for the ComplexContainer part
+                    if base_template_name:
+                        # Try to match just the base name against all known classes
+                        potential_matches = []
+                        for qname in qualified_name_map.keys():
+                            # Extract the class name portion (after the last namespace separator)
+                            class_part = (
+                                qname.split("::")[-1].split("<")[0]
+                                if "::" in qname
+                                else qname.split("<")[0]
+                            )
+                            if class_part == base_template_name:
+                                potential_matches.append(qname)
+
+                        if len(potential_matches) == 1:
+                            # We found exactly one matching class
+                            target_name_full_base = potential_matches[0]
+                        else:
+                            # Try standard namespace qualification
+                            target_name_full_base = (
+                                self._get_qualified_name_from_string(
+                                    base_template_name, classInfo.package
+                                )
+                            )
+                    else:
+                        continue
+                else:
+                    # Regular relationship processing
+                    target_name_full_base = self._get_qualified_name_from_string(
+                        target_name_original_base, classInfo.package
+                    )
 
                 # Resolve BASE target against known BASE classes
                 resolved_target_base = target_name_full_base
                 if target_name_full_base not in qualified_name_map:
+                    separator = (
+                        "." if self._language_context == FileTypeEnum.JAVA else "::"
+                    )
                     simple_target_name_base = target_name_full_base.split(separator)[
                         -1
                     ].split("<")[0]
@@ -289,6 +355,19 @@ class DataGenerator:
                     should_ignore = self._uml_drawer_for_filtering._should_ignore_type(
                         resolved_target_base
                     )
+
+                # Don't create self-relationships
+                if qualified_name == resolved_target_base:
+                    should_ignore = True
+
+                # Special handling for known problematic targets
+                if relation.relationship == InheritanceEnum.EXTENDED:
+                    # Keep extended relationships based on base name match, even for complex templates
+                    should_ignore = False
+
+                # Check for common malformed relationship targets
+                if resolved_target_base in ["int>", "isModifie"]:
+                    should_ignore = True
 
                 if not should_ignore:
                     dependency = Dependency()

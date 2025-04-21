@@ -541,10 +541,39 @@ class ClassUmlDrawer:
                 ):
                     continue
 
-                # Qualify the BASE target name
-                target_name_full_base = self._get_qualified_name_from_string(
-                    target_name_original_base, classInfo.package
-                )
+                # Special handling for template class inheritance
+                if (
+                    relation.relationship == InheritanceEnum.EXTENDED
+                    and "<" in target_name_original_base
+                ):
+                    # Extract the base template name
+                    base_template_name = target_name_original_base.split("<")[0].strip()
+
+                    # Try to find a matching class by simple name
+                    potential_matches = []
+                    for qname in qualified_name_map.keys():
+                        class_part = (
+                            qname.split("::")[-1].split("<")[0]
+                            if "::" in qname
+                            else qname.split("<")[0]
+                        )
+                        if class_part == base_template_name:
+                            potential_matches.append(qname)
+
+                    if len(potential_matches) == 1:
+                        # We found exactly one matching class
+                        target_name_full_base = potential_matches[0]
+                    else:
+                        # Try standard namespace qualification
+                        target_name_full_base = self._get_qualified_name_from_string(
+                            base_template_name, classInfo.package
+                        )
+                else:
+                    # Standard target resolution
+                    # Qualify the BASE target name
+                    target_name_full_base = self._get_qualified_name_from_string(
+                        target_name_original_base, classInfo.package
+                    )
 
                 # Resolve BASE target against known BASE classes
                 resolved_target_base = target_name_full_base
