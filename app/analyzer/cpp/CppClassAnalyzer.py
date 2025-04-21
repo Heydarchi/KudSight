@@ -186,10 +186,25 @@ class CppClassAnalyzer(AbstractAnalyzer):
         return classInfo
 
     def extract_full_package_name(self, inputStr: str) -> str:
+        """
+        Extract the full namespace path (package name) from nested namespace declarations.
+        E.g., from "namespace outer { namespace inner { ... } }" extracts "outer::inner"
+        """
         namespace_matches = list(re.finditer(self.patternPackageName, inputStr))
         if not namespace_matches:
             return ""
-        return namespace_matches[-1].group(1).strip()
+
+        # Build the full namespace path by checking nesting
+        namespaces = []
+        for match in namespace_matches:
+            ns_name = match.group(1).strip()
+            namespaces.append(ns_name)
+
+        # Join all detected namespaces with :: separator
+        if namespaces:
+            return "::".join(namespaces)
+
+        return ""
 
     def extract_relation_from_members(
         self,
